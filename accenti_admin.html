@@ -179,6 +179,17 @@
       </div>
     </div>
 
+    <label>Medida (opcional, para el filtro por tamaño de cama)</label>
+    <select id="fMedida">
+      <option value="">— No aplica —</option>
+      <option value="One">One</option>
+      <option value="Twin">Twin</option>
+      <option value="Dos Plazas">Dos Plazas</option>
+      <option value="Queen">Queen</option>
+      <option value="King">King</option>
+      <option value="Super King">Super King</option>
+    </select>
+
     <label>Descripción (opcional)</label>
     <textarea id="fDescripcion" placeholder="Tela, medidas, color..."></textarea>
 
@@ -375,6 +386,7 @@ function abrirModal(id){
     document.getElementById('fCategoria').value = p.categoria;
     actualizarSubcategorias();
     document.getElementById('fSubcategoria').value = p.subcategoria;
+    document.getElementById('fMedida').value = p.medida || '';
     document.getElementById('fDescripcion').value = p.descripcion || '';
     document.getElementById('fPrecio').value = p.precio ?? '';
     document.getElementById('fDisponible').checked = p.disponible;
@@ -385,6 +397,7 @@ function abrirModal(id){
     document.getElementById('fNombre').value = '';
     document.getElementById('fCategoria').value = 'Ropa de cama';
     actualizarSubcategorias();
+    document.getElementById('fMedida').value = '';
     document.getElementById('fDescripcion').value = '';
     document.getElementById('fPrecio').value = '';
     document.getElementById('fDisponible').checked = true;
@@ -426,6 +439,7 @@ async function guardarProducto(){
     nombre,
     categoria: document.getElementById('fCategoria').value,
     subcategoria: document.getElementById('fSubcategoria').value,
+    medida: document.getElementById('fMedida').value || null,
     descripcion: document.getElementById('fDescripcion').value.trim() || null,
     precio: precioVal === '' ? null : Number(precioVal),
     imagen_url,
@@ -475,7 +489,7 @@ function cerrarImportador(){
 }
 
 function descargarPlantilla(){
-  const contenido = `nombre,categoria,subcategoria,descripcion,precio\nSábana lisa 200 hilos,Ropa de cama,Sábanas,Algodón percal disponible en blanco y crema,18500\nJuego de toallas 3 piezas,Baño,Juegos de toallas,,32000\nAlmohada viscoelástica,Ropa de cama,Accesorios,Espuma con memoria funda lavable,`;
+  const contenido = `nombre,categoria,subcategoria,medida,descripcion,precio\nSábana Queen 200 hilos,Ropa de cama,Sábanas,Queen,Algodón percal disponible en blanco y crema,18500\nJuego de toallas 3 piezas,Baño,Juegos de toallas,,,32000\nAlmohada viscoelástica,Ropa de cama,Accesorios,,Espuma con memoria funda lavable,`;
   const blob = new Blob([contenido], {type:'text/csv;charset=utf-8;'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -529,6 +543,7 @@ function leerCSV(input){
       const nombre = r['nombre']||r['name']||'';
       const categoria = r['categoria']||r['category']||'';
       const subcategoria = r['subcategoria']||r['subcategory']||'';
+      const medida = r['medida']||r['size']||'';
       const descripcion = r['descripcion']||r['description']||'';
       const precio = r['precio']||r['price']||'';
 
@@ -542,7 +557,7 @@ function leerCSV(input){
         html += `<tr class="error"><td>${i+1}</td><td>${esc(nombre)||'—'}</td><td>${esc(categoria)}</td><td>${esc(subcategoria)}</td><td>—</td><td>⚠ ${esc(error)}</td></tr>`;
       } else {
         validos++;
-        filasParaImportar.push({ nombre, categoria, subcategoria, descripcion: descripcion||null, precio: precio===''?null:Number(precio), disponible:true, activo:true });
+        filasParaImportar.push({ nombre, categoria, subcategoria, medida: medida||null, descripcion: descripcion||null, precio: precio===''?null:Number(precio), disponible:true, activo:true });
         html += `<tr><td>${i+1}</td><td>${esc(nombre)}</td><td>${esc(categoria)}</td><td>${esc(subcategoria)}</td><td>${precio?'$'+Number(precio).toLocaleString('es-AR'):'Consultar'}</td><td>✓ OK</td></tr>`;
       }
     });

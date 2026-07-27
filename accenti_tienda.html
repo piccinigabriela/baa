@@ -213,6 +213,7 @@
 <div class="wrap">
   <div class="cat-row" id="catRow"></div>
   <div class="sub-row" id="subRow"></div>
+  <div class="sub-row" id="medidaRow"></div>
   <div class="grid" id="grid"></div>
 </div>
 
@@ -245,7 +246,8 @@ const ICONOS = {
 };
 
 let productos = [];
-let filtro = { categoria:"Todo", subcategoria:"Todas" };
+let filtro = { categoria:"Todo", subcategoria:"Todas", medida:"Todas" };
+const MEDIDAS = ["One","Twin","Dos Plazas","Queen","King","Super King"];
 
 function esc(s){
   if(s===null||s===undefined) return "";
@@ -284,6 +286,18 @@ function renderSubRow(){
   subRow.innerHTML = html;
 }
 
+function renderMedidaRow(){
+  const medidaRow = document.getElementById('medidaRow');
+  const medidasDisponibles = [...new Set(productos.map(p=>p.medida).filter(Boolean))];
+  if(medidasDisponibles.length === 0){ medidaRow.innerHTML=''; return; }
+  const ordenadas = MEDIDAS.filter(m=>medidasDisponibles.includes(m));
+  let html = `<div class="chip ${filtro.medida==='Todas'?'active':''}" onclick="setMedida('Todas')">📏 Todas las medidas</div>`;
+  ordenadas.forEach(m=>{
+    html += `<div class="chip ${filtro.medida===m?'active':''}" onclick="setMedida('${esc(m)}')">${esc(m)}</div>`;
+  });
+  medidaRow.innerHTML = html;
+}
+
 function setCategoria(cat){
   filtro.categoria = cat;
   filtro.subcategoria = 'Todas';
@@ -293,12 +307,17 @@ function setSubcategoria(sub){
   filtro.subcategoria = sub;
   renderSubRow(); renderGrid();
 }
+function setMedida(m){
+  filtro.medida = m;
+  renderMedidaRow(); renderGrid();
+}
 
 function renderGrid(){
   const grid = document.getElementById('grid');
   let lista = productos;
   if(filtro.categoria !== 'Todo') lista = lista.filter(p=>p.categoria===filtro.categoria);
   if(filtro.subcategoria !== 'Todas') lista = lista.filter(p=>p.subcategoria===filtro.subcategoria);
+  if(filtro.medida !== 'Todas') lista = lista.filter(p=>p.medida===filtro.medida);
 
   if(lista.length===0){
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Todavía no hay productos acá.<br><b>Volvé pronto</b>, estamos cargando el catálogo.</div>`;
@@ -394,6 +413,7 @@ async function cargarProductos(){
     return;
   }
   productos = data || [];
+  renderMedidaRow();
   renderGrid();
 }
 
