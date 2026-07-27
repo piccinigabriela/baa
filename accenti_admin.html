@@ -1,480 +1,530 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
-</head>
-<body>
-<x-dc>
-<helmet>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accenti — Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;0,700;1,600&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  body{margin:0;-webkit-font-smoothing:antialiased;}
-  input,textarea,select{font-family:'Work Sans',sans-serif;}
+  :root{
+    --bg:#F2EDE4; --surface:#FFFDF9; --ink:#2A2722; --ink-soft:#6B6356;
+    --pine:#3D4F46; --pine-soft:#E4EAE5; --plum:#8C4A5C; --plum-soft:#F1E2E5;
+    --gold:#C9A867; --line:#DDD4C2; --danger:#A33B3B;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;}
+  .wrap{max-width:920px;margin:0 auto;padding:30px 20px 60px;}
+  h1{font-family:'Libre Franklin',sans-serif;font-weight:800;color:var(--pine);font-size:28px;margin:0;}
+  .sub{color:var(--ink-soft);font-size:13.5px;margin:4px 0 0;}
+
+  /* login */
+  #loginBox{
+    max-width:380px;margin:90px auto;background:var(--surface);
+    border:1px solid var(--line);border-radius:16px;padding:32px;
+  }
+  #loginBox h1{text-align:center;margin-bottom:4px;}
+  #loginBox .sub{text-align:center;margin-bottom:24px;}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;}
+  input[type=email],input[type=password],input[type=text],input[type=number],textarea,select{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+    font-family:'Inter',sans-serif;font-size:14px;background:#fff;color:var(--ink);
+  }
+  textarea{resize:vertical;min-height:60px;}
+  button{cursor:pointer;font-family:'Inter',sans-serif;}
+  .btn{
+    padding:11px 18px;border-radius:9px;border:1.5px solid var(--pine);
+    background:var(--pine);color:#fff;font-weight:700;font-size:14px;
+  }
+  .btn:hover{opacity:.9;}
+  .btn-outline{background:transparent;color:var(--pine);}
+  .btn-outline:hover{background:var(--pine-soft);}
+  .btn-danger{border-color:var(--danger);background:transparent;color:var(--danger);}
+  .btn-danger:hover{background:#f5e6e6;}
+  .btn-block{width:100%;margin-top:18px;}
+  #loginError{color:var(--danger);font-size:13px;margin-top:10px;display:none;}
+
+  /* topbar */
+  .topbar{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed var(--line);padding-bottom:18px;margin-bottom:24px;}
+  .topbar-actions{display:flex;gap:10px;}
+
+  /* listado */
+  .group-title{
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--ink-soft);margin:26px 0 10px;display:flex;align-items:center;gap:8px;
+  }
+  .group-title .dot{width:8px;height:8px;border-radius:50%;background:var(--pine);}
+  .group-title.plum .dot{background:var(--plum);}
+
+  .row{
+    display:flex;align-items:center;gap:12px;background:var(--surface);
+    border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px;
+  }
+  .row .thumb{width:42px;height:42px;border-radius:8px;background:var(--pine-soft);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  .row .thumb img{width:100%;height:100%;object-fit:cover;}
+  .row .info{flex:1;min-width:0;}
+  .row .nombre{font-weight:700;font-size:14px;}
+  .row .meta{font-size:12px;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;}
+  .row .precio{font-family:'JetBrains Mono',monospace;font-size:13.5px;min-width:90px;text-align:right;}
+  .row .precio.empty{color:var(--ink-soft);font-size:11.5px;}
+  .tagchip{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;}
+  .tagchip.ok{background:var(--pine-soft);color:var(--pine);}
+  .tagchip.off{background:#eee;color:#999;}
+  .row-actions{display:flex;gap:6px;}
+  .iconbtn{
+    border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 9px;font-size:12px;color:var(--ink-soft);
+  }
+  .iconbtn:hover{background:var(--bg);}
+
+  .empty-state{text-align:center;color:var(--ink-soft);padding:50px 0;}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(42,39,34,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--surface);border-radius:16px;padding:28px;max-width:480px;width:100%;}
+  .modal h2{font-family:'Libre Franklin',sans-serif;color:var(--pine);margin:0 0 4px;font-size:20px;}
+  .modal .sub{margin-bottom:6px;}
+  .field-row{display:flex;gap:10px;}
+  .field-row > div{flex:1;}
+  .check-row{display:flex;align-items:center;gap:8px;margin-top:14px;}
+  .check-row input{width:auto;}
+  .check-row label{margin:0;text-transform:none;font-weight:500;color:var(--ink);font-size:13.5px;}
+  .modal-actions{display:flex;gap:10px;margin-top:22px;}
+  .current-img{width:56px;height:56px;border-radius:8px;object-fit:cover;margin-top:8px;border:1px solid var(--line);}
+
+  /* importador */
+  .import-zone{
+    border:2px dashed var(--line);border-radius:12px;padding:28px;text-align:center;
+    cursor:pointer;transition:.15s ease;margin-bottom:16px;
+  }
+  .import-zone:hover{border-color:var(--pine);background:var(--pine-soft);}
+  .import-zone input{display:none;}
+  .import-zone .icon{font-size:28px;margin-bottom:8px;}
+  .import-zone p{margin:0;color:var(--ink-soft);font-size:13.5px;}
+  .import-zone b{color:var(--ink);}
+  .import-preview{max-height:260px;overflow-y:auto;margin-bottom:16px;}
+  .import-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .import-table th{background:var(--pine-soft);padding:6px 10px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:var(--pine);}
+  .import-table td{padding:6px 10px;border-bottom:1px solid var(--line);}
+  .import-table tr.error td{background:#fef0f0;color:var(--danger);}
+  .import-info{font-size:13px;color:var(--ink-soft);margin-bottom:14px;}
+  .import-info b{color:var(--ink);}
+  .plantilla-link{font-size:12.5px;color:var(--pine);text-decoration:underline;cursor:pointer;margin-top:8px;display:inline-block;}
+
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:11px 20px;border-radius:10px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:.25s ease;z-index:99;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
 </style>
-</helmet>
+</head>
+<body>
 
-<div style="background:#F6F0E6;min-height:100vh;font-family:'Work Sans',sans-serif;color:#211C17;">
-
-<sc-if value="{{showLogin}}" hint-placeholder-val="{{true}}">
-  <div style="max-width:380px;margin:0 auto;padding-top:110px;">
-    <div style="background:#FFFCF6;border:1px solid #E4DACB;border-radius:4px;padding:40px 36px;">
-      <p style="font-family:'Newsreader',serif;font-style:italic;font-weight:700;font-size:32px;text-align:center;margin:0;color:#211C17;">Accenti Casa</p>
-      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7A6F62;text-align:center;margin:8px 0 28px;">Panel admin</p>
-
-      <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:0 0 6px;text-transform:uppercase;letter-spacing:.4px;">Email</label>
-      <input type="email" value="{{loginEmail}}" onChange="{{onLoginEmail}}" style="width:100%;padding:11px 13px;border:1px solid #E4DACB;border-radius:2px;font-size:14px;background:#fff;color:#211C17;box-sizing:border-box;">
-
-      <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.4px;">Contraseña</label>
-      <input type="password" value="{{loginPass}}" onChange="{{onLoginPass}}" style="width:100%;padding:11px 13px;border:1px solid #E4DACB;border-radius:2px;font-size:14px;background:#fff;color:#211C17;box-sizing:border-box;">
-
-      <button onClick="{{login}}" style="width:100%;margin-top:22px;padding:12px;border-radius:2px;border:1.5px solid #211C17;background:#211C17;color:#F6F0E6;font-weight:600;font-size:14px;cursor:pointer;letter-spacing:.3px;">Entrar</button>
-
-      <sc-if value="{{loginError}}" hint-placeholder-val="{{false}}">
-        <p style="color:#B4482D;font-size:13px;margin-top:14px;text-align:center;">Email o contraseña incorrectos.</p>
-      </sc-if>
-    </div>
-  </div>
-</sc-if>
-
-<sc-if value="{{showPanel}}" hint-placeholder-val="{{false}}">
-  <div style="max-width:960px;margin:0 auto;padding:36px 24px 80px;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #E4DACB;padding-bottom:20px;margin-bottom:28px;flex-wrap:wrap;gap:16px;">
-      <div>
-        <p style="font-family:'Newsreader',serif;font-style:italic;font-weight:700;font-size:30px;margin:0;color:#211C17;">Accenti Casa</p>
-        <p style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#7A6F62;margin:6px 0 0;">Panel admin — productos</p>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button onClick="{{abrirModalNuevo}}" style="padding:10px 16px;border-radius:2px;border:1.5px solid #211C17;background:transparent;color:#211C17;font-weight:600;font-size:13px;cursor:pointer;">+ Agregar producto</button>
-        <button onClick="{{abrirImportador}}" style="padding:10px 16px;border-radius:2px;border:1.5px solid #211C17;background:transparent;color:#211C17;font-weight:600;font-size:13px;cursor:pointer;">↑ Importar CSV</button>
-        <button onClick="{{logout}}" style="padding:10px 16px;border-radius:2px;border:1.5px solid #B4482D;background:transparent;color:#B4482D;font-weight:600;font-size:13px;cursor:pointer;">Cerrar sesión</button>
-      </div>
-    </div>
-
-    <sc-if value="{{listadoVacio}}" hint-placeholder-val="{{false}}">
-      <div style="text-align:center;color:#7A6F62;padding:60px 0;font-size:14px;">Todavía no cargaste productos.<br>Usá "+ Agregar producto" para sumar el primero.</div>
-    </sc-if>
-
-    <sc-for list="{{grupos}}" as="grupo" hint-placeholder-count="2">
-      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7A6F62;margin:28px 0 10px;display:flex;align-items:center;gap:8px;">
-        <span style="width:8px;height:8px;border-radius:50%;background:{{grupo.accent}};display:inline-block;"></span>{{grupo.titulo}}
-      </p>
-      <sc-for list="{{grupo.items}}" as="p" hint-placeholder-count="3">
-        <div style="display:flex;align-items:center;gap:14px;background:#FFFCF6;border:1px solid #E4DACB;border-radius:2px;padding:11px 15px;margin-bottom:8px;flex-wrap:wrap;">
-          <div style="{{p.thumbStyle}}"></div>
-          <div style="flex:1;min-width:140px;">
-            <div style="font-weight:600;font-size:14px;">{{p.nombre}}</div>
-            <div style="font-size:11.5px;color:#7A6F62;font-family:'JetBrains Mono',monospace;">{{p.subcategoria}}</div>
-          </div>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;min-width:90px;text-align:right;color:{{p.precioColor}};">{{p.precioTxt}}</span>
-          <span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{p.stockBg}};color:{{p.stockColor}};">{{p.stockLabel}}</span>
-          <span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{p.activoBg}};color:{{p.activoColor}};">{{p.activoLabel}}</span>
-          <div style="display:flex;gap:6px;">
-            <button onClick="{{p.onEditar}}" style="border:1px solid #E4DACB;background:#fff;border-radius:2px;padding:6px 10px;font-size:12px;color:#7A6F62;cursor:pointer;">Editar</button>
-            <button onClick="{{p.onBorrar}}" style="border:1px solid #E4DACB;background:#fff;border-radius:2px;padding:6px 10px;font-size:12px;color:#7A6F62;cursor:pointer;">Borrar</button>
-          </div>
-        </div>
-      </sc-for>
-    </sc-for>
-  </div>
-</sc-if>
-
-<sc-if value="{{showModal}}" hint-placeholder-val="{{false}}">
-  <div style="position:fixed;inset:0;background:rgba(33,28,23,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;">
-    <div style="background:#FFFCF6;border-radius:4px;padding:30px;max-width:460px;width:100%;">
-      <p style="font-family:'Newsreader',serif;font-style:italic;font-weight:700;font-size:21px;margin:0 0 4px;color:#211C17;">{{modalTitle}}</p>
-      <p style="font-size:13px;color:#7A6F62;margin:0 0 6px;">Completá lo que tengas — precio y foto los podés sumar después.</p>
-
-      <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;">Nombre</label>
-      <input type="text" value="{{fNombre}}" onChange="{{onFNombre}}" placeholder="Sábana lisa 240 hilos" style="width:100%;padding:10px 12px;border:1px solid #E4DACB;border-radius:2px;font-size:14px;background:#fff;color:#211C17;box-sizing:border-box;">
-
-      <div style="display:flex;gap:10px;">
-        <div style="flex:1;">
-          <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;">Categoría</label>
-          <select value="{{fCategoria}}" onChange="{{onFCategoria}}" style="width:100%;padding:10px 12px;border:1px solid #E4DACB;border-radius:2px;font-size:14px;background:#fff;color:#211C17;box-sizing:border-box;">
-            <sc-for list="{{categoriasOpciones}}" as="c" hint-placeholder-count="2">
-              <option value="{{c}}">{{c}}</option>
-            </sc-for>
-          </select>
-        </div>
-        <div style="flex:1;">
-          <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;">Subcategoría</label>
-          <select value="{{fSubcategoria}}" onChange="{{onFSubcategoria}}" style="width:100%;padding:10px 12px;border:1px solid #E4DACB;border-radius:2px;font-size:14px;background:#fff;color:#211C17;box-sizing:border-box;">
-            <sc-for list="{{subcategoriasOpciones}}" as="sc" hint-placeholder-count="3">
-              <option value="{{sc}}">{{sc}}</option>
-            </sc-for>
-          </select>
-        </div>
-      </div>
-
-      <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;">Descripción (opcional)</label>
-      <textarea value="{{fDescripcion}}" onChange="{{onFDescripcion}}" placeholder="Tela, medidas, color..." style="width:100%;min-height:60px;padding:10px 12px;border:1px solid #E4DACB;border-radius:2px;font-size:14px;background:#fff;color:#211C17;box-sizing:border-box;resize:vertical;"></textarea>
-
-      <div style="display:flex;gap:10px;">
-        <div style="flex:1;">
-          <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;">Precio (opcional)</label>
-          <input type="number" value="{{fPrecio}}" onChange="{{onFPrecio}}" placeholder="Vacío = Consultar precio" style="width:100%;padding:10px 12px;border:1px solid #E4DACB;border-radius:2px;font-size:14px;background:#fff;color:#211C17;box-sizing:border-box;">
-        </div>
-        <div style="flex:1;">
-          <label style="display:block;font-size:11px;font-weight:600;color:#7A6F62;margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;">Foto (opcional)</label>
-          <input type="file" accept="image/*" ref="{{fImagenRef}}" style="width:100%;padding:8px 0;font-size:13px;">
-        </div>
-      </div>
-
-      <sc-if value="{{fImagenActualUrl}}" hint-placeholder-val="{{false}}">
-        <div style="{{fImagenPreviewStyle}}"></div>
-      </sc-if>
-
-      <div style="display:flex;align-items:center;gap:8px;margin-top:16px;">
-        <input type="checkbox" checked="{{fDisponible}}" onChange="{{onFDisponible}}" style="width:auto;">
-        <label style="margin:0;font-weight:500;color:#211C17;font-size:13.5px;">Disponible / en stock</label>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
-        <input type="checkbox" checked="{{fActivo}}" onChange="{{onFActivo}}" style="width:auto;">
-        <label style="margin:0;font-weight:500;color:#211C17;font-size:13.5px;">Visible en la tienda</label>
-      </div>
-
-      <div style="display:flex;gap:10px;margin-top:24px;">
-        <button onClick="{{guardarProducto}}" style="flex:1;padding:12px;border-radius:2px;border:1.5px solid #211C17;background:#211C17;color:#F6F0E6;font-weight:600;font-size:14px;cursor:pointer;">{{guardarLabel}}</button>
-        <button onClick="{{cerrarModal}}" style="padding:12px 18px;border-radius:2px;border:1.5px solid #211C17;background:transparent;color:#211C17;font-weight:600;font-size:14px;cursor:pointer;">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</sc-if>
-
-<sc-if value="{{showImport}}" hint-placeholder-val="{{false}}">
-  <div style="position:fixed;inset:0;background:rgba(33,28,23,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;">
-    <div style="background:#FFFCF6;border-radius:4px;padding:30px;max-width:600px;width:100%;">
-      <p style="font-family:'Newsreader',serif;font-style:italic;font-weight:700;font-size:21px;margin:0 0 4px;color:#211C17;">Importar productos desde CSV</p>
-      <p style="font-size:13px;color:#7A6F62;margin:0 0 16px;">Las columnas requeridas son <b style="color:#211C17;">nombre</b>, <b style="color:#211C17;">categoria</b> y <b style="color:#211C17;">subcategoria</b>. El resto es opcional.</p>
-
-      <div onClick="{{clickCsvInput}}" style="border:2px dashed #E4DACB;border-radius:4px;padding:28px;text-align:center;cursor:pointer;">
-        <div style="font-size:26px;margin-bottom:8px;">📄</div>
-        <p style="margin:0;color:#7A6F62;font-size:13.5px;"><b style="color:#211C17;">Hacé click para elegir un archivo</b><br>o arrastrá un CSV acá</p>
-        <input type="file" accept=".csv" ref="{{csvInputRef}}" onChange="{{leerCSV}}" style="display:none;">
-      </div>
-
-      <span onClick="{{descargarPlantilla}}" style="font-size:12.5px;color:#B08D3D;text-decoration:underline;cursor:pointer;margin-top:8px;display:inline-block;">⬇ Descargar plantilla de ejemplo</span>
-
-      <sc-if value="{{showImportPreview}}" hint-placeholder-val="{{false}}">
-        <div style="margin-top:16px;">
-          <div style="font-size:13px;color:#7A6F62;margin-bottom:14px;" dangerouslySetInnerHTML="{{importInfoHtml}}"></div>
-          <div style="max-height:260px;overflow-y:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
-              <thead>
-                <tr>
-                  <th style="background:#E1E8E1;padding:6px 10px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#1F4235;">#</th>
-                  <th style="background:#E1E8E1;padding:6px 10px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#1F4235;">Nombre</th>
-                  <th style="background:#E1E8E1;padding:6px 10px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#1F4235;">Categoría</th>
-                  <th style="background:#E1E8E1;padding:6px 10px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#1F4235;">Subcategoría</th>
-                  <th style="background:#E1E8E1;padding:6px 10px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#1F4235;">Precio</th>
-                  <th style="background:#E1E8E1;padding:6px 10px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;text-transform:uppercase;color:#1F4235;">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <sc-for list="{{importRows}}" as="row" hint-placeholder-count="3">
-                  <tr style="background:{{row.rowBg}};color:{{row.rowColor}};">
-                    <td style="padding:6px 10px;border-bottom:1px solid #E4DACB;">{{row.n}}</td>
-                    <td style="padding:6px 10px;border-bottom:1px solid #E4DACB;">{{row.nombre}}</td>
-                    <td style="padding:6px 10px;border-bottom:1px solid #E4DACB;">{{row.categoria}}</td>
-                    <td style="padding:6px 10px;border-bottom:1px solid #E4DACB;">{{row.subcategoria}}</td>
-                    <td style="padding:6px 10px;border-bottom:1px solid #E4DACB;">{{row.precioTxt}}</td>
-                    <td style="padding:6px 10px;border-bottom:1px solid #E4DACB;">{{row.estado}}</td>
-                  </tr>
-                </sc-for>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </sc-if>
-
-      <div style="display:flex;gap:10px;margin-top:22px;">
-        <button onClick="{{confirmarImport}}" disabled="{{importDisabled}}" style="flex:1;padding:12px;border-radius:2px;border:1.5px solid #211C17;background:#211C17;color:#F6F0E6;font-weight:600;font-size:14px;cursor:pointer;opacity:{{importOpacity}};">{{importBtnLabel}}</button>
-        <button onClick="{{cerrarImportador}}" style="padding:12px 18px;border-radius:2px;border:1.5px solid #211C17;background:transparent;color:#211C17;font-weight:600;font-size:14px;cursor:pointer;">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</sc-if>
-
-<sc-if value="{{showToast}}" hint-placeholder-val="{{false}}">
-  <div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#211C17;color:#F6F0E6;padding:11px 20px;border-radius:2px;font-size:13.5px;z-index:99;">{{toastMsg}}</div>
-</sc-if>
-
+<div id="loginBox">
+  <h1>Accenti</h1>
+  <p class="sub">Panel admin</p>
+  <label>Email</label>
+  <input type="email" id="loginEmail" autocomplete="username">
+  <label>Contraseña</label>
+  <input type="password" id="loginPass" autocomplete="current-password">
+  <button class="btn btn-block" onclick="login()">Entrar</button>
+  <p id="loginError">Email o contraseña incorrectos.</p>
 </div>
 
-</x-dc>
-<script type="text/x-dc" data-dc-script>
-class Component extends DCLogic {
-  state = {
-    session: null, loginEmail: '', loginPass: '', loginError: false,
-    productos: [], editandoId: null, imagenActualUrl: null,
-    fNombre: '', fCategoria: 'Ropa de cama', fSubcategoria: '', fDescripcion: '', fPrecio: '', fDisponible: true, fActivo: true,
-    showModal: false, showImport: false,
-    filasParaImportar: [], importRows: [], importInfoHtml: '', showImportPreview: false, importing: false,
-    toastMsg: '', showToast: false
-  };
+<div class="wrap" id="panel" style="display:none;">
+  <div class="topbar">
+    <div>
+      <h1>Accenti</h1>
+      <p class="sub">Panel admin — productos</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline" onclick="abrirModal()">+ Agregar producto</button>
+      <button class="btn btn-outline" onclick="abrirImportador()">↑ Importar CSV</button>
+      <button class="btn btn-outline" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </div>
+  <div id="listado"></div>
+</div>
 
-  CATEGORIAS = {
-    "Ropa de cama": ["Sábanas", "Frazadas", "Fundas nórdicas", "Acolchados", "Accesorios"],
-    "Baño": ["Juegos de toallas", "Alfombritas", "Cortinas de baño"]
-  };
-  ACCENTS = { "Ropa de cama": "#1F4235", "Baño": "#B4482D" };
-  SUPABASE_URL = "https://usdimcbrvbpydvkmacxf.supabase.co";
-  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzZGltY2JydmJweWR2a21hY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NTExNDEsImV4cCI6MjEwMDIyNzE0MX0.ZR0g-xbxk0E1G0FTtP2nUuPunD3pjAmLXKVAU_vUqE4";
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Nuevo producto</h2>
+    <p class="sub">Completá lo que tengas — precio y foto los podés sumar después.</p>
 
-  fImagenRef = { current: null };
-  csvInputRef = { current: null };
+    <label>Nombre</label>
+    <input type="text" id="fNombre" placeholder="Sábana lisa 240 hilos">
 
-  componentDidMount() {
-    this.checkSesion();
-  }
+    <div class="field-row">
+      <div>
+        <label>Categoría</label>
+        <select id="fCategoria" onchange="actualizarSubcategorias()">
+          <option value="Ropa de cama">Ropa de cama</option>
+          <option value="Baño">Baño</option>
+        </select>
+      </div>
+      <div>
+        <label>Subcategoría</label>
+        <select id="fSubcategoria"></select>
+      </div>
+    </div>
 
-  getClient() {
-    if (!this._sb) {
-      if (!window.supabase) return null;
-      this._sb = window.supabase.createClient(this.SUPABASE_URL, this.SUPABASE_ANON_KEY);
-    }
-    return this._sb;
-  }
+    <label>Descripción (opcional)</label>
+    <textarea id="fDescripcion" placeholder="Tela, medidas, color..."></textarea>
 
-  async checkSesion() {
-    const sb = this.getClient();
-    if (!sb) { setTimeout(() => this.checkSesion(), 150); return; }
-    const { data } = await sb.auth.getSession();
-    if (data.session) { this.setState({ session: data.session }); this.cargarProductos(); }
-  }
+    <div class="field-row">
+      <div>
+        <label>Precio (opcional)</label>
+        <input type="number" id="fPrecio" placeholder="Vacío = Consultar precio">
+      </div>
+      <div>
+        <label>Foto (opcional)</label>
+        <input type="file" id="fImagen" accept="image/*">
+      </div>
+    </div>
+    <img id="fImagenActual" class="current-img" style="display:none;">
 
-  async login() {
-    const sb = this.getClient();
-    const { data, error } = await sb.auth.signInWithPassword({ email: this.state.loginEmail.trim(), password: this.state.loginPass });
-    if (error) { this.setState({ loginError: true }); return; }
-    this.setState({ loginError: false, session: data.session });
-    this.cargarProductos();
-  }
+    <div class="check-row">
+      <input type="checkbox" id="fDisponible" checked>
+      <label for="fDisponible">Disponible / en stock</label>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="fActivo" checked>
+      <label for="fActivo">Visible en la tienda</label>
+    </div>
 
-  async logout() {
-    const sb = this.getClient();
-    await sb.auth.signOut();
-    this.setState({ session: null });
-  }
+    <div class="modal-actions">
+      <button class="btn" style="flex:1" onclick="guardarProducto()">Guardar</button>
+      <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
-  toast(msg) {
-    this.setState({ toastMsg: msg, showToast: true });
-    clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => this.setState({ showToast: false }), 2400);
-  }
+<!-- Modal importador CSV -->
+<div class="overlay" id="overlayImport">
+  <div class="modal" style="max-width:600px;">
+    <h2>Importar productos desde CSV</h2>
+    <p class="sub" style="margin-bottom:16px;">Las columnas requeridas son <b>nombre</b>, <b>categoria</b> y <b>subcategoria</b>. El resto es opcional.</p>
 
-  async cargarProductos() {
-    const sb = this.getClient();
-    const { data, error } = await sb.from('productos').select('*').order('categoria').order('subcategoria').order('nombre');
-    if (error) { this.toast('No se pudo cargar el listado'); console.error(error); return; }
-    this.setState({ productos: data || [] });
-  }
+    <div class="import-zone" id="importZone" onclick="document.getElementById('csvInput').click()">
+      <div class="icon">📄</div>
+      <p><b>Hacé click para elegir un archivo</b><br>o arrastrá un CSV acá</p>
+      <input type="file" id="csvInput" accept=".csv" onchange="leerCSV(this)">
+    </div>
 
-  abrirModalNuevo() {
-    this.setState({
-      showModal: true, editandoId: null, imagenActualUrl: null,
-      fNombre: '', fCategoria: 'Ropa de cama', fSubcategoria: this.CATEGORIAS['Ropa de cama'][0],
-      fDescripcion: '', fPrecio: '', fDisponible: true, fActivo: true
-    });
-    if (this.fImagenRef.current) this.fImagenRef.current.value = '';
-  }
+    <span class="plantilla-link" onclick="descargarPlantilla()">⬇ Descargar plantilla de ejemplo</span>
 
-  abrirModalEditar(p) {
-    this.setState({
-      showModal: true, editandoId: p.id, imagenActualUrl: p.imagen_url,
-      fNombre: p.nombre, fCategoria: p.categoria, fSubcategoria: p.subcategoria,
-      fDescripcion: p.descripcion || '', fPrecio: p.precio ?? '', fDisponible: p.disponible, fActivo: p.activo
-    });
-    if (this.fImagenRef.current) this.fImagenRef.current.value = '';
-  }
+    <div id="importPreview" style="display:none;margin-top:16px;">
+      <div class="import-info" id="importInfo"></div>
+      <div class="import-preview">
+        <table class="import-table" id="importTable"></table>
+      </div>
+    </div>
 
-  cerrarModal() { this.setState({ showModal: false }); }
+    <div class="modal-actions">
+      <button class="btn" style="flex:1" id="btnConfirmarImport" onclick="confirmarImport()" disabled>Importar productos</button>
+      <button class="btn btn-outline" onclick="cerrarImportador()">Cancelar</button>
+    </div>
+  </div>
+</div>
 
-  onFCategoria(e) {
-    const cat = e.target.value;
-    this.setState({ fCategoria: cat, fSubcategoria: this.CATEGORIAS[cat][0] });
-  }
+<div id="toast"></div>
 
-  async subirImagenSiCorresponde() {
-    const input = this.fImagenRef.current;
-    if (!input || !input.files || !input.files[0]) return this.state.imagenActualUrl;
-    const sb = this.getClient();
-    const file = input.files[0];
-    const path = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-    const { error } = await sb.storage.from('productos').upload(path, file);
-    if (error) { this.toast('No se pudo subir la foto'); console.error(error); return this.state.imagenActualUrl; }
-    const { data } = sb.storage.from('productos').getPublicUrl(path);
-    return data.publicUrl;
-  }
+<script>
+// ====== CONFIGURÁ ESTO ======
+const SUPABASE_URL = "https://usdimcbrvbpydvkmacxf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzZGltY2JydmJweWR2a21hY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NTExNDEsImV4cCI6MjEwMDIyNzE0MX0.ZR0g-xbxk0E1G0FTtP2nUuPunD3pjAmLXKVAU_vUqE4";
+// =============================
 
-  async guardarProducto() {
-    const s = this.state;
-    const nombre = s.fNombre.trim();
-    if (!nombre) { this.toast('Ponele un nombre al producto'); return; }
-    const sb = this.getClient();
-    const imagen_url = await this.subirImagenSiCorresponde();
-    const payload = {
-      nombre, categoria: s.fCategoria, subcategoria: s.fSubcategoria,
-      descripcion: s.fDescripcion.trim() || null,
-      precio: s.fPrecio === '' ? null : Number(s.fPrecio),
-      imagen_url: imagen_url || null,
-      disponible: s.fDisponible, activo: s.fActivo
-    };
-    let error;
-    if (s.editandoId) ({ error } = await sb.from('productos').update(payload).eq('id', s.editandoId));
-    else ({ error } = await sb.from('productos').insert(payload));
-    if (error) { this.toast('No se pudo guardar'); console.error(error); return; }
-    this.toast(s.editandoId ? 'Producto actualizado' : 'Producto agregado');
-    this.setState({ showModal: false });
-    this.cargarProductos();
-  }
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  async borrarProducto(p) {
-    if (!confirm('¿Borrar este producto? No se puede deshacer.')) return;
-    const sb = this.getClient();
-    const { error } = await sb.from('productos').delete().eq('id', p.id);
-    if (error) { this.toast('No se pudo borrar'); console.error(error); return; }
-    this.toast('Producto borrado');
-    this.cargarProductos();
-  }
+const CATEGORIAS = {
+  "Ropa de cama": ["Sábanas","Frazadas","Fundas nórdicas","Acolchados","Cubrecamas","Accesorios"],
+  "Baño": ["Juegos de toallas","Alfombritas","Cortinas de baño"]
+};
 
-  abrirImportador() {
-    this.setState({ showImport: true, filasParaImportar: [], importRows: [], showImportPreview: false });
-    if (this.csvInputRef.current) this.csvInputRef.current.value = '';
-  }
-  cerrarImportador() { this.setState({ showImport: false }); }
-  clickCsvInput() { if (this.csvInputRef.current) this.csvInputRef.current.click(); }
+let productos = [];
+let editandoId = null;
+let imagenActualUrl = null;
 
-  descargarPlantilla() {
-    const contenido = `nombre,categoria,subcategoria,descripcion,precio\nSábana lisa 200 hilos,Ropa de cama,Sábanas,Algodón percal disponible en blanco y crema,18500\nJuego de toallas 3 piezas,Baño,Juegos de toallas,,32000\nAlmohada viscoelástica,Ropa de cama,Accesorios,Espuma con memoria funda lavable,`;
-    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'plantilla_accenti.csv';
-    a.click();
-  }
-
-  leerCSV() {
-    const input = this.csvInputRef.current;
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      const texto = e.target.result;
-      const sep = texto.includes(';') ? ';' : ',';
-      const lineas = texto.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      if (lineas.length < 2) { this.toast('El archivo está vacío o no tiene datos'); return; }
-      const headers = lineas[0].split(sep).map(h => h.trim().toLowerCase().replace(/"/g, ''));
-      const rows = lineas.slice(1).map(l => {
-        const vals = l.split(sep).map(v => v.trim().replace(/^"|"$/g, ''));
-        const obj = {};
-        headers.forEach((h, i) => obj[h] = vals[i] || '');
-        return obj;
-      });
-
-      const filas = [];
-      const importRows = [];
-      let validos = 0, errores = 0;
-      rows.forEach((r, i) => {
-        const nombre = r['nombre'] || r['name'] || '';
-        const categoria = r['categoria'] || r['category'] || '';
-        const subcategoria = r['subcategoria'] || r['subcategory'] || '';
-        const descripcion = r['descripcion'] || r['description'] || '';
-        const precio = r['precio'] || r['price'] || '';
-        let error = '';
-        if (!nombre) error = 'Falta nombre';
-        else if (!this.CATEGORIAS[categoria]) error = `Categoría inválida: "${categoria}"`;
-        else if (!this.CATEGORIAS[categoria].includes(subcategoria)) error = `Subcategoría inválida: "${subcategoria}"`;
-
-        if (error) {
-          errores++;
-          importRows.push({ n: i + 1, nombre: nombre || '—', categoria, subcategoria, precioTxt: '—', estado: `⚠ ${error}`, rowBg: '#fef0f0', rowColor: '#B4482D' });
-        } else {
-          validos++;
-          filas.push({ nombre, categoria, subcategoria, descripcion: descripcion || null, precio: precio === '' ? null : Number(precio), disponible: true, activo: true });
-          importRows.push({ n: i + 1, nombre, categoria, subcategoria, precioTxt: precio ? '$' + Number(precio).toLocaleString('es-AR') : 'Consultar', estado: '✓ OK', rowBg: 'transparent', rowColor: '#211C17' });
-        }
-      });
-
-      const infoHtml = `<b style="color:#211C17;">${validos} producto${validos !== 1 ? 's' : ''} listos</b> para importar${errores ? ` · <span style="color:#B4482D;">${errores} con error (se omiten)</span>` : ''}`;
-      this.setState({ filasParaImportar: filas, importRows, importInfoHtml: infoHtml, showImportPreview: true });
-    };
-    reader.readAsText(file, 'UTF-8');
-  }
-
-  async confirmarImport() {
-    const filas = this.state.filasParaImportar;
-    if (!filas.length) return;
-    this.setState({ importing: true });
-    const sb = this.getClient();
-    const { error } = await sb.from('productos').insert(filas);
-    if (error) { this.toast('Error al importar. Revisá la consola.'); console.error(error); this.setState({ importing: false }); return; }
-    this.toast(`${filas.length} producto${filas.length !== 1 ? 's' : ''} importados!`);
-    this.setState({ showImport: false, importing: false });
-    this.cargarProductos();
-  }
-
-  renderVals() {
-    const s = this.state;
-    const grupos = Object.keys(this.CATEGORIAS).map(cat => {
-      const items = s.productos.filter(p => p.categoria === cat).map(p => ({
-        id: p.id, nombre: p.nombre, subcategoria: p.subcategoria,
-        imagen_url: p.imagen_url, hasImagen: !!p.imagen_url,
-        thumbStyle: `width:42px;height:42px;border-radius:2px;flex-shrink:0;overflow:hidden;background-color:#EDE5D6;` + (p.imagen_url ? `background-image:url('${p.imagen_url}');background-size:cover;background-position:center;` : ''),
-        precioTxt: (p.precio !== null && p.precio !== '') ? `$${Number(p.precio).toLocaleString('es-AR')}` : 'Consultar',
-        precioColor: (p.precio !== null && p.precio !== '') ? '#211C17' : '#7A6F62',
-        stockLabel: p.disponible ? 'En stock' : 'Sin stock',
-        stockBg: p.disponible ? '#E1E8E1' : '#eee', stockColor: p.disponible ? '#1F4235' : '#999',
-        activoLabel: p.activo ? 'Visible' : 'Oculto',
-        activoBg: p.activo ? '#E1E8E1' : '#eee', activoColor: p.activo ? '#1F4235' : '#999',
-        onEditar: () => this.abrirModalEditar(p), onBorrar: () => this.borrarProducto(p)
-      }));
-      return { key: cat, titulo: `${cat} (${items.length})`, accent: this.ACCENTS[cat], items };
-    }).filter(g => g.items.length > 0);
-
-    return {
-      showLogin: !s.session, showPanel: !!s.session,
-      loginEmail: s.loginEmail, onLoginEmail: e => this.setState({ loginEmail: e.target.value }),
-      loginPass: s.loginPass, onLoginPass: e => this.setState({ loginPass: e.target.value }),
-      loginError: s.loginError, login: () => this.login(), logout: () => this.logout(),
-
-      grupos, listadoVacio: s.productos.length === 0,
-
-      showModal: s.showModal, modalTitle: s.editandoId ? 'Editar producto' : 'Nuevo producto',
-      guardarLabel: 'Guardar',
-      abrirModalNuevo: () => this.abrirModalNuevo(), cerrarModal: () => this.cerrarModal(),
-      guardarProducto: () => this.guardarProducto(),
-      fNombre: s.fNombre, onFNombre: e => this.setState({ fNombre: e.target.value }),
-      fCategoria: s.fCategoria, onFCategoria: e => this.onFCategoria(e),
-      categoriasOpciones: Object.keys(this.CATEGORIAS),
-      fSubcategoria: s.fSubcategoria, onFSubcategoria: e => this.setState({ fSubcategoria: e.target.value }),
-      subcategoriasOpciones: this.CATEGORIAS[s.fCategoria] || [],
-      fDescripcion: s.fDescripcion, onFDescripcion: e => this.setState({ fDescripcion: e.target.value }),
-      fPrecio: s.fPrecio, onFPrecio: e => this.setState({ fPrecio: e.target.value }),
-      fImagenRef: this.fImagenRef, fImagenActualUrl: s.imagenActualUrl,
-      fDisponible: s.fDisponible, onFDisponible: e => this.setState({ fDisponible: e.target.checked }),
-      fActivo: s.fActivo, onFActivo: e => this.setState({ fActivo: e.target.checked }),
-
-      showImport: s.showImport, abrirImportador: () => this.abrirImportador(), cerrarImportador: () => this.cerrarImportador(),
-      clickCsvInput: () => this.clickCsvInput(), csvInputRef: this.csvInputRef, leerCSV: () => this.leerCSV(),
-      descargarPlantilla: () => this.descargarPlantilla(),
-      showImportPreview: s.showImportPreview, importInfoHtml: s.importInfoHtml, importRows: s.importRows,
-      importDisabled: s.filasParaImportar.length === 0 || s.importing,
-      importOpacity: (s.filasParaImportar.length === 0 || s.importing) ? 0.5 : 1,
-      importBtnLabel: s.importing ? 'Importando...' : 'Importar productos',
-      confirmarImport: () => this.confirmarImport(),
-
-      fImagenPreviewStyle: `width:56px;height:56px;border-radius:2px;margin-top:10px;border:1px solid #E4DACB;background-image:url('${s.imagenActualUrl || ''}');background-size:cover;background-position:center;background-color:#EDE5D6;`,
-      showToast: s.showToast, toastMsg: s.toastMsg
-    };
-  }
+function esc(s){
+  if(s===null||s===undefined) return "";
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
 }
 
+// ---------- AUTH ----------
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+  document.getElementById('loginError').style.display = 'none';
+  mostrarPanel();
+}
+async function logout(){
+  await sb.auth.signOut();
+  document.getElementById('panel').style.display = 'none';
+  document.getElementById('loginBox').style.display = 'block';
+}
+async function checkSesion(){
+  const { data } = await sb.auth.getSession();
+  if(data.session) mostrarPanel();
+}
+function mostrarPanel(){
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('panel').style.display = 'block';
+  cargarProductos();
+}
+
+// ---------- LISTADO ----------
+async function cargarProductos(){
+  const { data, error } = await sb.from('productos').select('*').order('categoria').order('subcategoria').order('nombre');
+  if(error){ toast('No se pudo cargar el listado'); console.error(error); return; }
+  productos = data || [];
+  renderListado();
+}
+
+function renderListado(){
+  const cont = document.getElementById('listado');
+  if(productos.length===0){
+    cont.innerHTML = `<div class="empty-state">Todavía no cargaste productos.<br>Usá "+ Agregar producto" para sumar el primero.</div>`;
+    return;
+  }
+  let html = '';
+  for(const cat in CATEGORIAS){
+    const items = productos.filter(p=>p.categoria===cat);
+    if(items.length===0) continue;
+    const colorClass = cat==='Baño' ? 'plum' : '';
+    html += `<div class="group-title ${colorClass}"><span class="dot"></span>${esc(cat)} (${items.length})</div>`;
+    items.forEach(p=>{
+      const thumb = p.imagen_url ? `<img src="${esc(p.imagen_url)}">` : '';
+      const precioTxt = (p.precio!==null && p.precio!=='') ? `$${Number(p.precio).toLocaleString('es-AR')}` : 'Consultar';
+      html += `
+      <div class="row">
+        <div class="thumb">${thumb}</div>
+        <div class="info">
+          <div class="nombre">${esc(p.nombre)}</div>
+          <div class="meta">${esc(p.subcategoria)}</div>
+        </div>
+        <span class="precio ${!p.precio?'empty':''}">${precioTxt}</span>
+        <span class="tagchip ${p.disponible?'ok':'off'}">${p.disponible?'En stock':'Sin stock'}</span>
+        <span class="tagchip ${p.activo?'ok':'off'}">${p.activo?'Visible':'Oculto'}</span>
+        <div class="row-actions">
+          <button class="iconbtn" onclick="abrirModal('${p.id}')">Editar</button>
+          <button class="iconbtn" onclick="borrarProducto('${p.id}')">Borrar</button>
+        </div>
+      </div>`;
+    });
+  }
+  cont.innerHTML = html;
+}
+
+// ---------- MODAL / FORM ----------
+function actualizarSubcategorias(){
+  const cat = document.getElementById('fCategoria').value;
+  const sel = document.getElementById('fSubcategoria');
+  sel.innerHTML = CATEGORIAS[cat].map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+}
+
+function abrirModal(id){
+  editandoId = id || null;
+  imagenActualUrl = null;
+  document.getElementById('fImagen').value = '';
+  actualizarSubcategorias();
+
+  if(id){
+    const p = productos.find(x=>x.id===id);
+    document.getElementById('modalTitle').textContent = 'Editar producto';
+    document.getElementById('fNombre').value = p.nombre;
+    document.getElementById('fCategoria').value = p.categoria;
+    actualizarSubcategorias();
+    document.getElementById('fSubcategoria').value = p.subcategoria;
+    document.getElementById('fDescripcion').value = p.descripcion || '';
+    document.getElementById('fPrecio').value = p.precio ?? '';
+    document.getElementById('fDisponible').checked = p.disponible;
+    document.getElementById('fActivo').checked = p.activo;
+    imagenActualUrl = p.imagen_url;
+    const img = document.getElementById('fImagenActual');
+    if(p.imagen_url){ img.src = p.imagen_url; img.style.display='block'; } else { img.style.display='none'; }
+  } else {
+    document.getElementById('modalTitle').textContent = 'Nuevo producto';
+    document.getElementById('fNombre').value = '';
+    document.getElementById('fCategoria').value = 'Ropa de cama';
+    actualizarSubcategorias();
+    document.getElementById('fDescripcion').value = '';
+    document.getElementById('fPrecio').value = '';
+    document.getElementById('fDisponible').checked = true;
+    document.getElementById('fActivo').checked = true;
+    document.getElementById('fImagenActual').style.display = 'none';
+  }
+  document.getElementById('overlay').classList.add('show');
+}
+function cerrarModal(){
+  document.getElementById('overlay').classList.remove('show');
+}
+
+async function subirImagenSiCorresponde(){
+  const input = document.getElementById('fImagen');
+  if(!input.files || !input.files[0]) return imagenActualUrl;
+  const file = input.files[0];
+  const path = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
+  const { error } = await sb.storage.from('productos').upload(path, file);
+  if(error){ toast('No se pudo subir la foto'); console.error(error); return imagenActualUrl; }
+  const { data } = sb.storage.from('productos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function guardarProducto(){
+  const nombre = document.getElementById('fNombre').value.trim();
+  if(!nombre){ toast('Ponele un nombre al producto'); return; }
+
+  const imagen_url = await subirImagenSiCorresponde();
+  const precioVal = document.getElementById('fPrecio').value;
+
+  const payload = {
+    nombre,
+    categoria: document.getElementById('fCategoria').value,
+    subcategoria: document.getElementById('fSubcategoria').value,
+    descripcion: document.getElementById('fDescripcion').value.trim() || null,
+    precio: precioVal === '' ? null : Number(precioVal),
+    imagen_url: imagen_url || null,
+    disponible: document.getElementById('fDisponible').checked,
+    activo: document.getElementById('fActivo').checked
+  };
+
+  let error;
+  if(editandoId){
+    ({ error } = await sb.from('productos').update(payload).eq('id', editandoId));
+  } else {
+    ({ error } = await sb.from('productos').insert(payload));
+  }
+  if(error){ toast('No se pudo guardar'); console.error(error); return; }
+
+  toast(editandoId ? 'Producto actualizado' : 'Producto agregado');
+  cerrarModal();
+  cargarProductos();
+}
+
+async function borrarProducto(id){
+  if(!confirm('¿Borrar este producto? No se puede deshacer.')) return;
+  const { error } = await sb.from('productos').delete().eq('id', id);
+  if(error){ toast('No se pudo borrar'); console.error(error); return; }
+  toast('Producto borrado');
+  cargarProductos();
+}
+
+// ---------- IMPORTADOR CSV ----------
+let filasParaImportar = [];
+
+const CATS_VALIDAS = {
+  "Ropa de cama": ["Sábanas","Frazadas","Fundas nórdicas","Acolchados","Cubrecamas","Accesorios"],
+  "Baño": ["Juegos de toallas","Alfombritas","Cortinas de baño"]
+};
+
+function abrirImportador(){
+  filasParaImportar = [];
+  document.getElementById('csvInput').value = '';
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('btnConfirmarImport').disabled = true;
+  document.getElementById('overlayImport').classList.add('show');
+}
+function cerrarImportador(){
+  document.getElementById('overlayImport').classList.remove('show');
+}
+
+function descargarPlantilla(){
+  const contenido = `nombre,categoria,subcategoria,descripcion,precio\nSábana lisa 200 hilos,Ropa de cama,Sábanas,Algodón percal disponible en blanco y crema,18500\nJuego de toallas 3 piezas,Baño,Juegos de toallas,,32000\nAlmohada viscoelástica,Ropa de cama,Accesorios,Espuma con memoria funda lavable,`;
+  const blob = new Blob([contenido], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'plantilla_accenti.csv';
+  a.click();
+}
+
+function leerCSV(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const texto = e.target.result;
+    const sep = texto.includes(';') ? ';' : ',';
+    const lineas = texto.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+    if(lineas.length < 2){ toast('El archivo está vacío o no tiene datos'); return; }
+
+    const headers = lineas[0].split(sep).map(h=>h.trim().toLowerCase().replace(/"/g,''));
+    const rows = lineas.slice(1).map(l=>{
+      const vals = l.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));
+      const obj = {};
+      headers.forEach((h,i)=>obj[h]=vals[i]||'');
+      return obj;
+    });
+
+    filasParaImportar = [];
+    let html = '<thead><tr><th>#</th><th>Nombre</th><th>Categoría</th><th>Subcategoría</th><th>Precio</th><th>Estado</th></tr></thead><tbody>';
+    let validos = 0, errores = 0;
+
+    rows.forEach((r,i)=>{
+      const nombre = r['nombre']||r['name']||'';
+      const categoria = r['categoria']||r['category']||'';
+      const subcategoria = r['subcategoria']||r['subcategory']||'';
+      const descripcion = r['descripcion']||r['description']||'';
+      const precio = r['precio']||r['price']||'';
+
+      let error = '';
+      if(!nombre) error = 'Falta nombre';
+      else if(!CATS_VALIDAS[categoria]) error = `Categoría inválida: "${categoria}"`;
+      else if(!CATS_VALIDAS[categoria].includes(subcategoria)) error = `Subcategoría inválida: "${subcategoria}"`;
+
+      if(error){
+        errores++;
+        html += `<tr class="error"><td>${i+1}</td><td>${esc(nombre)||'—'}</td><td>${esc(categoria)}</td><td>${esc(subcategoria)}</td><td>—</td><td>⚠ ${esc(error)}</td></tr>`;
+      } else {
+        validos++;
+        filasParaImportar.push({ nombre, categoria, subcategoria, descripcion: descripcion||null, precio: precio===''?null:Number(precio), disponible:true, activo:true });
+        html += `<tr><td>${i+1}</td><td>${esc(nombre)}</td><td>${esc(categoria)}</td><td>${esc(subcategoria)}</td><td>${precio?'$'+Number(precio).toLocaleString('es-AR'):'Consultar'}</td><td>✓ OK</td></tr>`;
+      }
+    });
+    html += '</tbody>';
+
+    document.getElementById('importTable').innerHTML = html;
+    document.getElementById('importInfo').innerHTML = `<b>${validos} producto${validos!==1?'s':''} listos</b> para importar${errores?` · <span style="color:var(--danger)">${errores} con error (se omiten)</span>`:''}`;
+    document.getElementById('importPreview').style.display = 'block';
+    document.getElementById('btnConfirmarImport').disabled = validos === 0;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function confirmarImport(){
+  if(!filasParaImportar.length) return;
+  const btn = document.getElementById('btnConfirmarImport');
+  btn.disabled = true;
+  btn.textContent = 'Importando...';
+
+  const { error } = await sb.from('productos').insert(filasParaImportar);
+  if(error){
+    toast('Error al importar. Revisá la consola.');
+    console.error(error);
+    btn.disabled = false;
+    btn.textContent = 'Importar productos';
+    return;
+  }
+  toast(`${filasParaImportar.length} producto${filasParaImportar.length!==1?'s':''} importados!`);
+  cerrarImportador();
+  cargarProductos();
+}
+
+checkSesion();
 </script>
 </body>
 </html>

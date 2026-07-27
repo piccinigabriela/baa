@@ -1,235 +1,305 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
-</head>
-<body>
-<x-dc>
-<helmet>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accenti — Ropa de cama y baño</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Work+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  body{margin:0;-webkit-font-smoothing:antialiased;}
-  a{color:inherit;}
-  @keyframes shimmer{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}
+  :root{
+    --bg:#F2EDE4;
+    --surface:#FFFDF9;
+    --ink:#2A2722;
+    --ink-soft:#6B6356;
+    --pine:#3D4F46;
+    --pine-soft:#E4EAE5;
+    --plum:#8C4A5C;
+    --plum-soft:#F1E2E5;
+    --gold:#C9A867;
+    --line:#DDD4C2;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 60px;}
+
+  header.top{
+    padding:36px 20px 24px;
+    text-align:center;
+    border-bottom:1px dashed var(--line);
+    margin-bottom:28px;
+  }
+  .logo{
+    font-family:'Libre Franklin',sans-serif;
+    font-weight:800;
+    font-size:38px;
+    letter-spacing:1px;
+    color:var(--pine);
+    margin:0;
+  }
+  .tagline{
+    margin:6px 0 0;
+    color:var(--ink-soft);
+    font-size:14.5px;
+    letter-spacing:.3px;
+  }
+
+  /* nav de categorías */
+  .cat-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:9px 16px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    font-size:14px;font-weight:600;color:var(--ink);
+    cursor:pointer;
+    transition:.15s ease;
+  }
+  .pill .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-soft);}
+  .pill.pine .dot{background:var(--pine);}
+  .pill.plum .dot{background:var(--plum);}
+  .pill:hover{border-color:var(--ink-soft);}
+  .pill.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .pill.active .dot{background:var(--gold);}
+
+  .sub-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:30px;}
+  .chip{
+    padding:6px 14px;
+    border-radius:999px;
+    border:1px dashed var(--line);
+    background:transparent;
+    font-size:13px;font-weight:500;color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .chip.active{background:var(--surface);border-color:var(--ink-soft);color:var(--ink);border-style:solid;}
+
+  /* grid de productos */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:18px;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    display:flex;flex-direction:column;
+    transition:.15s ease;
+  }
+  .card:hover{border-color:var(--ink-soft);transform:translateY(-2px);}
+
+  .img-box{
+    aspect-ratio:1/1;
+    background:var(--pine-soft);
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .img-box.plum-bg{background:var(--plum-soft);}
+  .img-box img{width:100%;height:100%;object-fit:cover;}
+  .img-box svg{width:46px;height:46px;opacity:.45;}
+  .placeholder-label{
+    position:absolute;bottom:8px;left:10px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:.5px;
+    color:var(--ink-soft);text-transform:uppercase;
+  }
+
+  .card-body{padding:14px 14px 16px;display:flex;flex-direction:column;gap:8px;flex:1;}
+  .subcat-tag{
+    align-self:flex-start;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;
+    padding:3px 9px;border-radius:999px;
+    border:1px dashed var(--line);
+    color:var(--ink-soft);
+  }
+  .nombre{font-weight:700;font-size:15.5px;line-height:1.3;margin:0;}
+  .desc{font-size:13px;color:var(--ink-soft);line-height:1.4;margin:0;}
+  .precio-row{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:6px;}
+  .precio{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:15px;}
+  .precio.consultar{color:var(--ink-soft);font-size:13px;}
+  .badge-sinstock{
+    font-size:11px;font-weight:600;color:var(--plum);
+    background:var(--plum-soft);padding:2px 8px;border-radius:999px;
+  }
+
+  .btn-wsp{
+    margin-top:10px;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:10px;border-radius:10px;
+    border:1.5px dashed var(--pine);
+    background:transparent;
+    color:var(--pine);font-weight:700;font-size:13.5px;
+    text-decoration:none;
+    cursor:pointer;
+    transition:.15s ease;
+  }
+  .btn-wsp:hover{background:var(--pine);color:#fff;border-style:solid;}
+  .btn-wsp svg{width:16px;height:16px;}
+
+  .empty{
+    text-align:center;padding:60px 20px;color:var(--ink-soft);
+  }
+  .empty b{color:var(--ink);}
+
+  footer{
+    text-align:center;margin-top:50px;padding-top:24px;
+    border-top:1px dashed var(--line);
+    color:var(--ink-soft);font-size:13px;
+  }
+
+  @media(max-width:480px){
+    .logo{font-size:30px;}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  }
 </style>
-</helmet>
+</head>
+<body>
 
-<div style="background:#F6F0E6;min-height:100vh;font-family:'Work Sans',sans-serif;color:#211C17;">
+<header class="top">
+  <p class="logo">Accenti</p>
+  <p class="tagline">Ropa de cama y baño</p>
+</header>
 
-  <header style="background:#211C17;padding:60px 24px 44px;text-align:center;">
-    <p style="font-family:'Newsreader',serif;font-style:italic;font-weight:600;font-size:56px;letter-spacing:.5px;margin:0;color:#F6F0E6;line-height:1;">Accenti Casa</p>
-    <p style="font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:2.5px;text-transform:uppercase;color:#B08D3D;margin:14px 0 0;">Ropa de cama &amp; baño</p>
-  </header>
-
-  <div style="max-width:1120px;margin:0 auto;padding:0 24px 80px;">
-
-    <div style="display:flex;gap:30px;justify-content:center;padding:34px 8px 10px;flex-wrap:wrap;border-bottom:1px solid #E4DACB;">
-      <sc-for list="{{categoriasList}}" as="cat" hint-placeholder-count="3">
-        <button onClick="{{cat.onClick}}" style="{{cat.style}}">{{cat.label}}</button>
-      </sc-for>
-    </div>
-
-    <sc-if value="{{showSub}}" hint-placeholder-val="{{false}}">
-      <div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap;padding:20px 0 6px;">
-        <sc-for list="{{subcategoriasList}}" as="sub" hint-placeholder-count="4">
-          <button onClick="{{sub.onClick}}" style="{{sub.style}}">{{sub.label}}</button>
-        </sc-for>
-      </div>
-    </sc-if>
-
-    <p style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.4px;color:#7A6F62;margin:22px 0 26px;">{{countLabel}}</p>
-
-    <sc-if value="{{loading}}" hint-placeholder-val="{{true}}">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px;">
-        <sc-for list="{{skeletons}}" as="sk" hint-placeholder-count="6">
-          <div style="aspect-ratio:1/1.35;background:#EDE5D6;border-radius:4px;animation:shimmer 1.3s ease-in-out infinite;"></div>
-        </sc-for>
-      </div>
-    </sc-if>
-
-    <sc-if value="{{error}}" hint-placeholder-val="{{false}}">
-      <div style="text-align:center;padding:70px 20px;color:#7A6F62;font-size:15px;">No pudimos cargar el catálogo. Probá de nuevo en un rato.</div>
-    </sc-if>
-
-    <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}">
-      <div style="text-align:center;padding:70px 20px;color:#7A6F62;font-size:15px;">
-        Todavía no hay productos acá.<br>
-        <b style="color:#211C17;font-family:'Newsreader',serif;font-style:italic;">Volvé pronto</b>, estamos cargando el catálogo.
-      </div>
-    </sc-if>
-
-    <sc-if value="{{showGrid}}" hint-placeholder-val="{{false}}">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px;">
-        <sc-for list="{{items}}" as="item" hint-placeholder-count="6">
-          <div style="background:#FFFCF6;border:1px solid #E4DACB;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;transition:transform .18s ease,box-shadow .18s ease;" style-hover="transform:translateY(-4px);box-shadow:0 18px 32px -20px rgba(33,28,23,.4);">
-            <div style="aspect-ratio:1/1;position:relative;overflow:hidden;">
-              <sc-if value="{{item.hasImagen}}" hint-placeholder-val="{{false}}">
-                <img src="{{item.imagen_url}}" alt="{{item.nombre}}" style="width:100%;height:100%;object-fit:cover;display:block;">
-              </sc-if>
-              <sc-if value="{{item.noImagen}}" hint-placeholder-val="{{true}}">
-                <div style="{{item.placeholderStyle}}">
-                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#7A6F62;">foto de producto</span>
-                </div>
-              </sc-if>
-              <span style="position:absolute;top:10px;left:10px;background:rgba(246,240,230,.92);color:#211C17;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.4px;text-transform:uppercase;padding:4px 9px;border-radius:999px;">{{item.subcategoria}}</span>
-            </div>
-            <div style="padding:16px 16px 18px;display:flex;flex-direction:column;gap:8px;flex:1;">
-              <p style="font-family:'Newsreader',serif;font-weight:600;font-size:17px;line-height:1.3;margin:0;">{{item.nombre}}</p>
-              <sc-if value="{{item.hasDescripcion}}" hint-placeholder-val="{{false}}">
-                <p style="font-size:13px;color:#7A6F62;line-height:1.45;margin:0;">{{item.descripcion}}</p>
-              </sc-if>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:8px;">
-                <sc-if value="{{item.hasPrecio}}" hint-placeholder-val="{{false}}">
-                  <span style="font-family:'JetBrains Mono',monospace;font-weight:600;font-size:15px;color:#B08D3D;">{{item.precioTxt}}</span>
-                </sc-if>
-                <sc-if value="{{item.sinPrecio}}" hint-placeholder-val="{{false}}">
-                  <span style="font-family:'Newsreader',serif;font-style:italic;font-size:13.5px;color:#7A6F62;">Consultar precio</span>
-                </sc-if>
-                <sc-if value="{{item.sinStock}}" hint-placeholder-val="{{false}}">
-                  <span style="font-size:10.5px;font-weight:600;color:#B4482D;background:#F3E1D8;padding:3px 9px;border-radius:999px;letter-spacing:.3px;">Sin stock</span>
-                </sc-if>
-              </div>
-              <a href="{{item.waHref}}" target="_blank" rel="noopener" style="{{item.waBtnStyle}}" style-hover="background:#211C17;color:#F6F0E6;border-color:#211C17;">
-                <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3.1.8.8-3-.2-.3a8.2 8.2 0 1 1 7 3.9Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.7.8-.8 1-.1.1-.3.2-.5.1-.2-.1-1-.4-2-1.2-.7-.7-1.2-1.5-1.4-1.7-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.3.2-.4.1-.2 0-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.2 1.6 2.4 3.8 3.4.5.2 1 .4 1.3.5.6.2 1.1.1 1.5.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.2-.2-.4-.3Z"></path></svg>
-                Consultar por WhatsApp
-              </a>
-            </div>
-          </div>
-        </sc-for>
-      </div>
-    </sc-if>
-
-  </div>
-
-  <footer style="text-align:center;padding:34px 20px 44px;background:#211C17;">
-    <p style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#B08D3D;margin:0;">Accenti Casa</p>
-    <p style="font-size:12.5px;color:#A69A88;margin:6px 0 0;">Consultas por WhatsApp</p>
-  </footer>
-
+<div class="wrap">
+  <div class="cat-row" id="catRow"></div>
+  <div class="sub-row" id="subRow"></div>
+  <div class="grid" id="grid"></div>
 </div>
 
-</x-dc>
-<script type="text/x-dc" data-dc-script>
-class Component extends DCLogic {
-  state = { productos: [], loading: true, error: false, categoria: 'Todo', subcategoria: 'Todas' };
+<footer>Accenti · Consultas por WhatsApp</footer>
 
-  CATEGORIAS = {
-    "Ropa de cama": { accent: "#1F4235", accentSoft: "#E1E8E1", subcategorias: ["Sábanas", "Frazadas", "Fundas nórdicas", "Acolchados", "Accesorios"] },
-    "Baño": { accent: "#B4482D", accentSoft: "#F3E1D8", subcategorias: ["Juegos de toallas", "Alfombritas", "Cortinas de baño"] }
-  };
-  WHATSAPP_NUMERO = "5491169472590";
-  SUPABASE_URL = "https://usdimcbrvbpydvkmacxf.supabase.co";
-  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzZGltY2JydmJweWR2a21hY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NTExNDEsImV4cCI6MjEwMDIyNzE0MX0.ZR0g-xbxk0E1G0FTtP2nUuPunD3pjAmLXKVAU_vUqE4";
+<script>
+// ====== CONFIGURÁ ESTO ======
+const SUPABASE_URL = "https://usdimcbrvbpydvkmacxf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzZGltY2JydmJweWR2a21hY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NTExNDEsImV4cCI6MjEwMDIyNzE0MX0.ZR0g-xbxk0E1G0FTtP2nUuPunD3pjAmLXKVAU_vUqE4";
+const WHATSAPP_NUMERO = "5491169472590";
+// =============================
 
-  componentDidMount() {
-    this.cargarProductos();
-  }
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  getClient() {
-    if (!this._sb) {
-      if (!window.supabase) return null;
-      this._sb = window.supabase.createClient(this.SUPABASE_URL, this.SUPABASE_ANON_KEY);
-    }
-    return this._sb;
-  }
+const CATEGORIAS = {
+  "Ropa de cama": { color:"pine", subcategorias:["Sábanas","Frazadas","Fundas nórdicas","Acolchados","Cubrecamas","Accesorios"] },
+  "Baño": { color:"plum", subcategorias:["Juegos de toallas","Alfombritas","Cortinas de baño"] }
+};
 
-  async cargarProductos() {
-    const sb = this.getClient();
-    if (!sb) { setTimeout(() => this.cargarProductos(), 150); return; }
-    const { data, error } = await sb.from('productos').select('*').eq('activo', true)
-      .order('categoria').order('subcategoria').order('orden').order('nombre');
-    if (error) { this.setState({ error: true, loading: false }); console.error(error); return; }
-    this.setState({ productos: data || [], loading: false });
-  }
+const ICONOS = {
+  "Ropa de cama": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 16h20M2 16v4M22 16v4M4 16v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4M7 10V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3"/></svg>`,
+  "Baño": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-3Z"/><path d="M4 12V6a2 2 0 0 1 2-2h2M9 4v2"/></svg>`
+};
 
-  setCategoria(cat) { this.setState({ categoria: cat, subcategoria: 'Todas' }); }
-  setSubcategoria(sub) { this.setState({ subcategoria: sub }); }
+let productos = [];
+let filtro = { categoria:"Todo", subcategoria:"Todas" };
 
-  formatPrecio(p) {
-    if (p === null || p === undefined || p === '') return null;
-    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(p);
-  }
-
-  waLink(p) {
-    let msg = `Hola! Te quería consultar por: ${p.nombre}`;
-    const precioTxt = this.formatPrecio(p.precio);
-    if (precioTxt) msg += ` (${precioTxt})`;
-    return `https://wa.me/${this.WHATSAPP_NUMERO}?text=${encodeURIComponent(msg)}`;
-  }
-
-  pillStyle(active, accent) {
-    const color = active ? accent : "transparent";
-    const textColor = active ? "#211C17" : "#7A6F62";
-    return `font-family:'Newsreader',serif;font-style:italic;font-weight:600;font-size:19px;background:none;border:none;border-bottom:2px solid ${color};cursor:pointer;padding:4px 2px 8px;color:${textColor};letter-spacing:.2px;transition:color .15s ease,border-color .15s ease;`;
-  }
-
-  chipStyle(active) {
-    return active
-      ? "padding:7px 15px;border-radius:999px;border:1px solid #211C17;background:#211C17;color:#F6F0E6;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;"
-      : "padding:7px 15px;border-radius:999px;border:1px solid #E4DACB;background:transparent;color:#7A6F62;font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;";
-  }
-
-  stripeStyle(accentSoft) {
-    return `width:100%;height:100%;background:repeating-linear-gradient(135deg, ${accentSoft} 0px, ${accentSoft} 16px, #FFFCF6 16px, #FFFCF6 32px);display:flex;align-items:flex-end;padding:12px;`;
-  }
-
-  renderVals() {
-    const s = this.state;
-    const cats = ["Todo", ...Object.keys(this.CATEGORIAS)];
-    const categoriasList = cats.map(key => {
-      const active = s.categoria === key;
-      const accent = key === 'Todo' ? '#B08D3D' : this.CATEGORIAS[key].accent;
-      return { key, label: key, active, style: this.pillStyle(active, accent), onClick: () => this.setCategoria(key) };
-    });
-
-    const showSub = s.categoria !== 'Todo';
-    let subcategoriasList = [];
-    if (showSub) {
-      const subs = ["Todas", ...this.CATEGORIAS[s.categoria].subcategorias];
-      subcategoriasList = subs.map(sub => ({
-        key: sub, label: sub, active: s.subcategoria === sub,
-        style: this.chipStyle(s.subcategoria === sub),
-        onClick: () => this.setSubcategoria(sub)
-      }));
-    }
-
-    let lista = s.productos;
-    if (s.categoria !== 'Todo') lista = lista.filter(p => p.categoria === s.categoria);
-    if (s.subcategoria !== 'Todas') lista = lista.filter(p => p.subcategoria === s.subcategoria);
-
-    const items = lista.map(p => {
-      const cfg = this.CATEGORIAS[p.categoria] || { accent: '#211C17', accentSoft: '#EFEAE0' };
-      const precioTxt = this.formatPrecio(p.precio);
-      return {
-        id: p.id, nombre: p.nombre, descripcion: p.descripcion, subcategoria: p.subcategoria,
-        hasDescripcion: !!p.descripcion,
-        imagen_url: p.imagen_url, hasImagen: !!p.imagen_url, noImagen: !p.imagen_url,
-        sinStock: !p.disponible,
-        precioTxt, hasPrecio: !!precioTxt, sinPrecio: !precioTxt,
-        placeholderStyle: this.stripeStyle(cfg.accentSoft),
-        waBtnStyle: `display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:2px;border:1.5px solid ${cfg.accent};color:${cfg.accent};font-family:'JetBrains Mono',monospace;font-weight:600;font-size:12px;letter-spacing:.4px;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:.15s ease;`,
-        waHref: this.waLink(p)
-      };
-    });
-
-    const showGrid = !s.loading && !s.error && items.length > 0;
-    const isEmpty = !s.loading && !s.error && items.length === 0;
-    const countLabel = s.loading ? '' : `${items.length} producto${items.length === 1 ? '' : 's'}`;
-
-    return {
-      loading: s.loading, error: s.error,
-      categoriasList, showSub, subcategoriasList,
-      items, showGrid, isEmpty, countLabel,
-      skeletons: [1, 2, 3, 4, 5, 6]
-    };
-  }
+function esc(s){
+  if(s===null||s===undefined) return "";
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
+function formatPrecio(p){
+  if(p===null || p===undefined || p==="") return null;
+  return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(p);
+}
+
+function waLink(producto){
+  let msg = `Hola! Te quería consultar por: ${producto.nombre}`;
+  if(producto.precio) msg += ` (${formatPrecio(producto.precio)})`;
+  return `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(msg)}`;
+}
+
+function renderCatRow(){
+  const catRow = document.getElementById('catRow');
+  let html = `<div class="pill ${filtro.categoria==='Todo'?'active':''}" onclick="setCategoria('Todo')"><span class="dot"></span>Todo</div>`;
+  for(const cat in CATEGORIAS){
+    const c = CATEGORIAS[cat];
+    html += `<div class="pill ${c.color} ${filtro.categoria===cat?'active':''}" onclick="setCategoria('${esc(cat)}')"><span class="dot"></span>${esc(cat)}</div>`;
+  }
+  catRow.innerHTML = html;
+}
+
+function renderSubRow(){
+  const subRow = document.getElementById('subRow');
+  if(filtro.categoria==='Todo'){ subRow.innerHTML=''; return; }
+  const subs = CATEGORIAS[filtro.categoria].subcategorias;
+  let html = `<div class="chip ${filtro.subcategoria==='Todas'?'active':''}" onclick="setSubcategoria('Todas')">Todas</div>`;
+  subs.forEach(s=>{
+    html += `<div class="chip ${filtro.subcategoria===s?'active':''}" onclick="setSubcategoria('${esc(s)}')">${esc(s)}</div>`;
+  });
+  subRow.innerHTML = html;
+}
+
+function setCategoria(cat){
+  filtro.categoria = cat;
+  filtro.subcategoria = 'Todas';
+  renderCatRow(); renderSubRow(); renderGrid();
+}
+function setSubcategoria(sub){
+  filtro.subcategoria = sub;
+  renderSubRow(); renderGrid();
+}
+
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  let lista = productos;
+  if(filtro.categoria !== 'Todo') lista = lista.filter(p=>p.categoria===filtro.categoria);
+  if(filtro.subcategoria !== 'Todas') lista = lista.filter(p=>p.subcategoria===filtro.subcategoria);
+
+  if(lista.length===0){
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Todavía no hay productos acá.<br><b>Volvé pronto</b>, estamos cargando el catálogo.</div>`;
+    return;
+  }
+
+  grid.innerHTML = lista.map(p=>{
+    const precioTxt = formatPrecio(p.precio);
+    const colorClass = CATEGORIAS[p.categoria]?.color === 'plum' ? 'plum-bg' : '';
+    const imgHtml = p.imagen_url
+      ? `<img src="${esc(p.imagen_url)}" alt="${esc(p.nombre)}">`
+      : `${ICONOS[p.categoria]||''}<span class="placeholder-label">Sin foto</span>`;
+    return `
+    <div class="card">
+      <div class="img-box ${colorClass}">${imgHtml}</div>
+      <div class="card-body">
+        <span class="subcat-tag">${esc(p.subcategoria)}</span>
+        <p class="nombre">${esc(p.nombre)}</p>
+        ${p.descripcion ? `<p class="desc">${esc(p.descripcion)}</p>` : ''}
+        <div class="precio-row">
+          ${precioTxt ? `<span class="precio">${precioTxt}</span>` : `<span class="precio consultar">Consultar precio</span>`}
+          ${!p.disponible ? `<span class="badge-sinstock">Sin stock</span>` : ''}
+        </div>
+        <a class="btn-wsp" href="${waLink(p)}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3.1.8.8-3-.2-.3a8.2 8.2 0 1 1 7 3.9Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.7.8-.8 1-.1.1-.3.2-.5.1-.2-.1-1-.4-2-1.2-.7-.7-1.2-1.5-1.4-1.7-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.3.2-.4.1-.2 0-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.2 1.6 2.4 3.8 3.4.5.2 1 .4 1.3.5.6.2 1.1.1 1.5.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.2-.2-.4-.3Z"/></svg>
+          Consultar por WhatsApp
+        </a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cargarProductos(){
+  const { data, error } = await sb.from('productos').select('*').eq('activo', true).order('categoria').order('subcategoria').order('orden').order('nombre');
+  if(error){
+    document.getElementById('grid').innerHTML = `<div class="empty" style="grid-column:1/-1;">No pudimos cargar el catálogo. Probá de nuevo en un rato.</div>`;
+    console.error(error);
+    return;
+  }
+  productos = data || [];
+  renderGrid();
+}
+
+renderCatRow();
+renderSubRow();
+cargarProductos();
 </script>
 </body>
 </html>
