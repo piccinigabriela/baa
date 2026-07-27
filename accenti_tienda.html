@@ -179,10 +179,21 @@
     display:flex;align-items:center;justify-content:center;
     cursor:pointer;font-size:16px;color:var(--ink);
   }
-  .modal-img{aspect-ratio:1/1;background:var(--pine-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .modal-img{aspect-ratio:1/1;background:var(--pine-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
   .modal-img.plum-bg{background:var(--plum-soft);}
   .modal-img img{width:100%;height:100%;object-fit:cover;}
   .modal-img svg{width:64px;height:64px;opacity:.4;}
+  .galeria-flecha{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:34px;height:34px;border-radius:50%;
+    background:rgba(255,253,249,.85);display:flex;align-items:center;justify-content:center;
+    font-size:22px;color:var(--ink);cursor:pointer;user-select:none;
+  }
+  .galeria-flecha.izq{left:10px;}
+  .galeria-flecha.der{right:10px;}
+  .galeria-puntos{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:6px;}
+  .galeria-puntos .punto{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.6);}
+  .galeria-puntos .punto.activo{background:#fff;width:16px;border-radius:4px;}
   .modal-body{padding:20px 22px 24px;display:flex;flex-direction:column;gap:10px;}
   .modal-desc{font-size:14.5px;color:var(--ink);line-height:1.55;white-space:pre-line;}
 
@@ -320,16 +331,27 @@ function renderGrid(){
   }).join('');
 }
 
+let galeriaActual = [];
+let galeriaIndice = 0;
+
 function abrirProducto(id){
   const p = productos.find(x=>x.id===id);
   if(!p) return;
   const precioTxt = formatPrecio(p.precio);
   const colorClass = CATEGORIAS[p.categoria]?.color === 'plum' ? 'plum-bg' : '';
-  const imgHtml = p.imagen_url
-    ? `<img src="${esc(p.imagen_url)}" alt="${esc(p.nombre)}">`
+  galeriaActual = [p.imagen_url, ...(p.imagenes_extra||[])].filter(Boolean);
+  galeriaIndice = 0;
+  const tieneVarias = galeriaActual.length > 1;
+  const imgHtml = galeriaActual.length
+    ? `<img id="galeriaImg" src="${esc(galeriaActual[0])}" alt="${esc(p.nombre)}">`
     : `${ICONOS[p.categoria]||''}`;
+  const flechasHtml = tieneVarias ? `
+    <div class="galeria-flecha izq" onclick="cambiarFoto(-1)">‹</div>
+    <div class="galeria-flecha der" onclick="cambiarFoto(1)">›</div>
+    <div class="galeria-puntos" id="galeriaPuntos"></div>
+  ` : '';
   document.getElementById('modalProductoContenido').innerHTML = `
-    <div class="modal-img ${colorClass}">${imgHtml}</div>
+    <div class="modal-img ${colorClass}">${imgHtml}${flechasHtml}</div>
     <div class="modal-body">
       <span class="subcat-tag">${esc(p.subcategoria)}</span>
       <p class="nombre" style="font-size:19px;">${esc(p.nombre)}</p>
@@ -344,7 +366,20 @@ function abrirProducto(id){
       </a>
     </div>
   `;
+  if(tieneVarias) renderGaleriaPuntos();
   document.getElementById('overlayProducto').classList.add('show');
+}
+
+function renderGaleriaPuntos(){
+  const cont = document.getElementById('galeriaPuntos');
+  if(!cont) return;
+  cont.innerHTML = galeriaActual.map((_,i)=>`<span class="punto ${i===galeriaIndice?'activo':''}"></span>`).join('');
+}
+function cambiarFoto(delta){
+  galeriaIndice = (galeriaIndice + delta + galeriaActual.length) % galeriaActual.length;
+  const img = document.getElementById('galeriaImg');
+  if(img) img.src = galeriaActual[galeriaIndice];
+  renderGaleriaPuntos();
 }
 
 function cerrarProducto(){

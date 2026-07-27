@@ -93,6 +93,14 @@
   .check-row label{margin:0;text-transform:none;font-weight:500;color:var(--ink);font-size:13.5px;}
   .modal-actions{display:flex;gap:10px;margin-top:22px;}
   .current-img{width:56px;height:56px;border-radius:8px;object-fit:cover;margin-top:8px;border:1px solid var(--line);}
+  .miniaturas-actuales{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .miniaturas-actuales img{width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--line);}
+  .miniaturas-actuales .mini-wrap{position:relative;}
+  .miniaturas-actuales .mini-x{
+    position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
+    background:var(--danger);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;border:2px solid var(--surface);
+  }
 
   /* importador */
   .import-zone{
@@ -180,11 +188,11 @@
         <input type="number" id="fPrecio" placeholder="Vacío = Consultar precio">
       </div>
       <div>
-        <label>Foto (opcional)</label>
-        <input type="file" id="fImagen" accept="image/*">
+        <label>Fotos (opcional, podés elegir varias)</label>
+        <input type="file" id="fImagen" accept="image/*" multiple>
       </div>
     </div>
-    <img id="fImagenActual" class="current-img" style="display:none;">
+    <div id="fImagenesActuales" class="miniaturas-actuales" style="display:none;"></div>
 
     <div class="check-row">
       <input type="checkbox" id="fDisponible" checked>
@@ -247,7 +255,7 @@ const CATEGORIAS = {
 
 let productos = [];
 let editandoId = null;
-let imagenActualUrl = null;
+let imagenesActuales = []; // array de URLs ya guardadas para el producto en edición
 
 function esc(s){
   if(s===null||s===undefined) return "";
@@ -309,12 +317,13 @@ function renderListado(){
     html += `<div class="group-title ${colorClass}"><span class="dot"></span>${esc(cat)} (${items.length})</div>`;
     items.forEach(p=>{
       const thumb = p.imagen_url ? `<img src="${esc(p.imagen_url)}">` : '';
+      const extraCount = (p.imagenes_extra && p.imagenes_extra.length) ? ` +${p.imagenes_extra.length}` : '';
       const precioTxt = (p.precio!==null && p.precio!=='') ? `$${Number(p.precio).toLocaleString('es-AR')}` : 'Consultar';
       html += `
       <div class="row">
         <div class="thumb">${thumb}</div>
         <div class="info">
-          <div class="nombre">${esc(p.nombre)}</div>
+          <div class="nombre">${esc(p.nombre)}${extraCount ? `<span style="color:var(--ink-soft);font-weight:500;">${extraCount} fotos</span>` : ''}</div>
           <div class="meta">${esc(p.subcategoria)}</div>
         </div>
         <span class="precio ${!p.precio?'empty':''}">${precioTxt}</span>
@@ -337,9 +346,25 @@ function actualizarSubcategorias(){
   sel.innerHTML = CATEGORIAS[cat].map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
 }
 
+function renderMiniaturasActuales(){
+  const cont = document.getElementById('fImagenesActuales');
+  if(!imagenesActuales.length){ cont.style.display='none'; cont.innerHTML=''; return; }
+  cont.style.display = 'flex';
+  cont.innerHTML = imagenesActuales.map((url,i)=>`
+    <div class="mini-wrap">
+      <img src="${esc(url)}">
+      <div class="mini-x" onclick="quitarImagenActual(${i})">✕</div>
+    </div>
+  `).join('');
+}
+function quitarImagenActual(i){
+  imagenesActuales.splice(i,1);
+  renderMiniaturasActuales();
+}
+
 function abrirModal(id){
   editandoId = id || null;
-  imagenActualUrl = null;
+  imagenesActuales = [];
   document.getElementById('fImagen').value = '';
   actualizarSubcategorias();
 
@@ -354,9 +379,7 @@ function abrirModal(id){
     document.getElementById('fPrecio').value = p.precio ?? '';
     document.getElementById('fDisponible').checked = p.disponible;
     document.getElementById('fActivo').checked = p.activo;
-    imagenActualUrl = p.imagen_url;
-    const img = document.getElementById('fImagenActual');
-    if(p.imagen_url){ img.src = p.imagen_url; img.style.display='block'; } else { img.style.display='none'; }
+    imagenesActuales = [p.imagen_url, ...(p.imagenes_extra||[])].filter(Boolean);
   } else {
     document.getElementById('modalTitle').textContent = 'Nuevo producto';
     document.getElementById('fNombre').value = '';
@@ -366,30 +389,37 @@ function abrirModal(id){
     document.getElementById('fPrecio').value = '';
     document.getElementById('fDisponible').checked = true;
     document.getElementById('fActivo').checked = true;
-    document.getElementById('fImagenActual').style.display = 'none';
   }
+  renderMiniaturasActuales();
   document.getElementById('overlay').classList.add('show');
 }
 function cerrarModal(){
   document.getElementById('overlay').classList.remove('show');
 }
 
-async function subirImagenSiCorresponde(){
+async function subirImagenesNuevas(){
   const input = document.getElementById('fImagen');
-  if(!input.files || !input.files[0]) return imagenActualUrl;
-  const file = input.files[0];
-  const path = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
-  const { error } = await sb.storage.from('productos').upload(path, file);
-  if(error){ toast('No se pudo subir la foto'); console.error(error); return imagenActualUrl; }
-  const { data } = sb.storage.from('productos').getPublicUrl(path);
-  return data.publicUrl;
+  const urls = [];
+  if(input.files && input.files.length){
+    for(const file of input.files){
+      const path = `${Date.now()}_${Math.random().toString(36).slice(2,7)}_${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
+      const { error } = await sb.storage.from('productos').upload(path, file);
+      if(error){ toast('No se pudo subir una de las fotos'); console.error(error); continue; }
+      const { data } = sb.storage.from('productos').getPublicUrl(path);
+      urls.push(data.publicUrl);
+    }
+  }
+  return urls;
 }
 
 async function guardarProducto(){
   const nombre = document.getElementById('fNombre').value.trim();
   if(!nombre){ toast('Ponele un nombre al producto'); return; }
 
-  const imagen_url = await subirImagenSiCorresponde();
+  const nuevasUrls = await subirImagenesNuevas();
+  const todasLasImagenes = [...imagenesActuales, ...nuevasUrls];
+  const imagen_url = todasLasImagenes[0] || null;
+  const imagenes_extra = todasLasImagenes.slice(1);
   const precioVal = document.getElementById('fPrecio').value;
 
   const payload = {
@@ -398,7 +428,8 @@ async function guardarProducto(){
     subcategoria: document.getElementById('fSubcategoria').value,
     descripcion: document.getElementById('fDescripcion').value.trim() || null,
     precio: precioVal === '' ? null : Number(precioVal),
-    imagen_url: imagen_url || null,
+    imagen_url,
+    imagenes_extra,
     disponible: document.getElementById('fDisponible').checked,
     activo: document.getElementById('fActivo').checked
   };
@@ -452,6 +483,26 @@ function descargarPlantilla(){
   a.click();
 }
 
+function parsearFilaCSV(linea, sep){
+  const vals = [];
+  let actual = '';
+  let entreComillas = false;
+  for(let i=0; i<linea.length; i++){
+    const c = linea[i];
+    if(c === '"'){
+      if(entreComillas && linea[i+1] === '"'){ actual += '"'; i++; }
+      else { entreComillas = !entreComillas; }
+    } else if(c === sep && !entreComillas){
+      vals.push(actual.trim());
+      actual = '';
+    } else {
+      actual += c;
+    }
+  }
+  vals.push(actual.trim());
+  return vals;
+}
+
 function leerCSV(input){
   const file = input.files[0];
   if(!file) return;
@@ -462,11 +513,11 @@ function leerCSV(input){
     const lineas = texto.trim().split('\n').map(l=>l.trim()).filter(Boolean);
     if(lineas.length < 2){ toast('El archivo está vacío o no tiene datos'); return; }
 
-    const headers = lineas[0].split(sep).map(h=>h.trim().toLowerCase().replace(/"/g,''));
+    const headers = parsearFilaCSV(lineas[0], sep).map(h=>h.trim().toLowerCase().replace(/^"|"$/g,''));
     const rows = lineas.slice(1).map(l=>{
-      const vals = l.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));
+      const vals = parsearFilaCSV(l, sep);
       const obj = {};
-      headers.forEach((h,i)=>obj[h]=vals[i]||'');
+      headers.forEach((h,i)=>obj[h]=(vals[i]||'').trim());
       return obj;
     });
 
