@@ -3,50 +3,66 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Accenti — Ropa de cama y baño</title>
+<title>baa — Ropa de cama y baño</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --bg:#F2EDE4;
-    --surface:#FFFDF9;
-    --ink:#2A2722;
+    --bg:#F5EAD8;
+    --surface:#FFFDF7;
+    --ink:#201E1D;
     --ink-soft:#6B6356;
-    --pine:#3D4F46;
-    --pine-soft:#E4EAE5;
-    --plum:#8C4A5C;
-    --plum-soft:#F1E2E5;
-    --gold:#C9A867;
-    --line:#DDD4C2;
+    --pine:#8A4A20;
+    --pine-soft:#F1E2D3;
+    --plum:#5B6B4A;
+    --plum-soft:#E9EDE3;
+    --gold:#C67139;
+    --line:#E3D3BA;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     background:var(--bg);
     color:var(--ink);
-    font-family:'Inter',sans-serif;
+    font-family:'Figtree',sans-serif;
     -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:1080px;margin:0 auto;padding:0 20px 60px;}
 
   header.top{
-    padding:36px 20px 24px;
+    position:relative;
+    padding:56px 20px 36px;
     text-align:center;
-    border-bottom:1px dashed var(--line);
+    overflow:hidden;
     margin-bottom:28px;
+    border-bottom:1px dashed var(--line);
   }
+  .header-motas{
+    position:absolute;
+    top:50%;left:50%;
+    transform:translate(-50%,-55%);
+    width:340px;height:340px;
+    opacity:.16;
+    pointer-events:none;
+    z-index:0;
+  }
+  .logo-row{position:relative;z-index:1;display:flex;align-items:baseline;justify-content:center;gap:2px;}
   .logo{
-    font-family:'Libre Franklin',sans-serif;
-    font-weight:800;
-    font-size:38px;
-    letter-spacing:1px;
-    color:var(--pine);
+    font-family:'Comfortaa',sans-serif;
+    font-weight:700;
+    font-size:64px;
+    letter-spacing:0px;
+    color:var(--ink);
     margin:0;
+    line-height:1;
   }
+  .logo .a1{position:relative;top:-0.13em;}
+  .logo .a2{position:relative;top:0.13em;color:var(--gold);}
   .tagline{
-    margin:6px 0 0;
+    position:relative;z-index:1;
+    margin:10px 0 0;
     color:var(--ink-soft);
     font-size:14.5px;
     letter-spacing:.3px;
@@ -206,7 +222,14 @@
 <body>
 
 <header class="top">
-  <p class="logo">Accenti</p>
+  <svg class="header-motas" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="70" cy="90" r="42" fill="#201E1D"/>
+    <circle cx="105" cy="75" r="42" fill="#C67139"/>
+    <circle cx="130" cy="105" r="42" fill="#5B6B4A"/>
+  </svg>
+  <p class="logo-row">
+    <span class="logo">b</span><span class="logo a1">a</span><span class="logo a2">a</span>
+  </p>
   <p class="tagline">Ropa de cama y baño</p>
 </header>
 
@@ -217,7 +240,7 @@
   <div class="grid" id="grid"></div>
 </div>
 
-<footer>Accenti · Consultas por WhatsApp</footer>
+<footer>baa · Consultas por WhatsApp</footer>
 
 <div class="overlay" id="overlayProducto" onclick="if(event.target===this) cerrarProducto()">
   <div class="modal-producto">
