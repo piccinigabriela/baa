@@ -79,6 +79,13 @@
   .iconbtn:hover{background:var(--bg);}
 
   .empty-state{text-align:center;color:var(--ink-soft);padding:50px 0;}
+  .filtro-proveedor{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .filtro-proveedor .chip-prov{
+    padding:6px 14px;border-radius:999px;border:1px dashed var(--line);
+    background:transparent;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
+  }
+  .filtro-proveedor .chip-prov.active{background:var(--pine);color:#fff;border-style:solid;border-color:var(--pine);}
+  .tagchip.proveedor{background:var(--pine-soft);color:var(--pine);font-weight:600;}
 
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(42,39,34,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:50;}
@@ -162,6 +169,7 @@
       <button class="btn btn-outline" onclick="logout()">Cerrar sesión</button>
     </div>
   </div>
+  <div id="filtroProveedor" class="filtro-proveedor"></div>
   <div id="listado"></div>
 </div>
 
@@ -197,6 +205,10 @@
       <option value="King">King</option>
       <option value="Super King">Super King</option>
     </select>
+
+    <label>Proveedor (uso interno, nunca se ve en la tienda)</label>
+    <input type="text" id="fProveedor" list="proveedoresLista" placeholder="Ej: Nuvia, Levitex/Oregon...">
+    <datalist id="proveedoresLista"></datalist>
 
     <label>Descripción (opcional)</label>
     <textarea id="fDescripcion" placeholder="Tela, medidas, color..."></textarea>
@@ -322,15 +334,45 @@ async function cargarProductos(){
   renderListado();
 }
 
+let filtroProveedorActivo = 'Todos';
+
+function renderFiltroProveedor(){
+  const cont = document.getElementById('filtroProveedor');
+  const proveedores = [...new Set(productos.map(p=>p.proveedor).filter(Boolean))].sort();
+  if(proveedores.length === 0){ cont.innerHTML=''; return; }
+  let html = `<span class="chip-prov ${filtroProveedorActivo==='Todos'?'active':''}" onclick="setFiltroProveedor('Todos')">Todos</span>`;
+  proveedores.forEach(prov=>{
+    html += `<span class="chip-prov ${filtroProveedorActivo===prov?'active':''}" onclick="setFiltroProveedor('${esc(prov)}')">${esc(prov)}</span>`;
+  });
+  cont.innerHTML = html;
+}
+function setFiltroProveedor(prov){
+  filtroProveedorActivo = prov;
+  renderFiltroProveedor();
+  renderListado();
+}
+
+function actualizarDatalistProveedores(){
+  const dl = document.getElementById('proveedoresLista');
+  const proveedores = [...new Set(productos.map(p=>p.proveedor).filter(Boolean))].sort();
+  dl.innerHTML = proveedores.map(p=>`<option value="${esc(p)}">`).join('');
+}
+
 function renderListado(){
   const cont = document.getElementById('listado');
-  if(productos.length===0){
-    cont.innerHTML = `<div class="empty-state">Todavía no cargaste productos.<br>Usá "+ Agregar producto" para sumar el primero.</div>`;
+  renderFiltroProveedor();
+  actualizarDatalistProveedores();
+
+  let lista = productos;
+  if(filtroProveedorActivo !== 'Todos') lista = lista.filter(p=>p.proveedor === filtroProveedorActivo);
+
+  if(lista.length===0){
+    cont.innerHTML = `<div class="empty-state">${productos.length===0 ? 'Todavía no cargaste productos.<br>Usá "+ Agregar producto" para sumar el primero.' : 'Ningún producto de este proveedor.'}</div>`;
     return;
   }
   let html = '';
   for(const cat in CATEGORIAS){
-    const items = productos.filter(p=>p.categoria===cat);
+    const items = lista.filter(p=>p.categoria===cat);
     if(items.length===0) continue;
     const colorClass = cat==='Baño' ? 'plum' : '';
     html += `<div class="group-title ${colorClass}"><span class="dot"></span>${esc(cat)} (${items.length})</div>`;
@@ -345,6 +387,7 @@ function renderListado(){
           <div class="nombre">${esc(p.nombre)}${extraCount ? `<span style="color:var(--ink-soft);font-weight:500;">${extraCount} fotos</span>` : ''}</div>
           <div class="meta">${esc(p.subcategoria)}</div>
         </div>
+        ${p.proveedor ? `<span class="tagchip proveedor">${esc(p.proveedor)}</span>` : ''}
         <span class="precio ${!p.precio?'empty':''}">${precioTxt}</span>
         <span class="tagchip ${p.disponible?'ok':'off'}">${p.disponible?'En stock':'Sin stock'}</span>
         <span class="tagchip ${p.activo?'ok':'off'}">${p.activo?'Visible':'Oculto'}</span>
@@ -402,6 +445,7 @@ function abrirModal(id){
     actualizarSubcategorias();
     document.getElementById('fSubcategoria').value = p.subcategoria;
     document.getElementById('fMedida').value = p.medida || '';
+    document.getElementById('fProveedor').value = p.proveedor || '';
     document.getElementById('fDescripcion').value = p.descripcion || '';
     document.getElementById('fPrecio').value = p.precio ?? '';
     document.getElementById('fDisponible').checked = p.disponible;
@@ -413,6 +457,7 @@ function abrirModal(id){
     document.getElementById('fCategoria').value = 'Ropa de cama';
     actualizarSubcategorias();
     document.getElementById('fMedida').value = '';
+    document.getElementById('fProveedor').value = '';
     document.getElementById('fDescripcion').value = '';
     document.getElementById('fPrecio').value = '';
     document.getElementById('fDisponible').checked = true;
@@ -434,6 +479,7 @@ function duplicarProducto(id){
   actualizarSubcategorias();
   document.getElementById('fSubcategoria').value = p.subcategoria;
   document.getElementById('fMedida').value = p.medida || '';
+  document.getElementById('fProveedor').value = p.proveedor || '';
   document.getElementById('fDescripcion').value = p.descripcion || '';
   document.getElementById('fPrecio').value = p.precio ?? '';
   document.getElementById('fDisponible').checked = p.disponible;
@@ -477,6 +523,7 @@ async function guardarProducto(){
     categoria: document.getElementById('fCategoria').value,
     subcategoria: document.getElementById('fSubcategoria').value,
     medida: document.getElementById('fMedida').value || null,
+    proveedor: document.getElementById('fProveedor').value.trim() || null,
     descripcion: document.getElementById('fDescripcion').value.trim() || null,
     precio: precioVal === '' ? null : Number(precioVal),
     imagen_url,
@@ -581,6 +628,7 @@ function leerCSV(input){
       const categoria = r['categoria']||r['category']||'';
       const subcategoria = r['subcategoria']||r['subcategory']||'';
       const medida = r['medida']||r['size']||'';
+      const proveedor = r['proveedor']||r['supplier']||'';
       const descripcion = r['descripcion']||r['description']||'';
       const precio = r['precio']||r['price']||'';
 
@@ -594,7 +642,7 @@ function leerCSV(input){
         html += `<tr class="error"><td>${i+1}</td><td>${esc(nombre)||'—'}</td><td>${esc(categoria)}</td><td>${esc(subcategoria)}</td><td>—</td><td>⚠ ${esc(error)}</td></tr>`;
       } else {
         validos++;
-        filasParaImportar.push({ nombre, categoria, subcategoria, medida: medida||null, descripcion: descripcion||null, precio: precio===''?null:Number(precio), disponible:true, activo:true });
+        filasParaImportar.push({ nombre, categoria, subcategoria, medida: medida||null, proveedor: proveedor||null, descripcion: descripcion||null, precio: precio===''?null:Number(precio), disponible:true, activo:true });
         html += `<tr><td>${i+1}</td><td>${esc(nombre)}</td><td>${esc(categoria)}</td><td>${esc(subcategoria)}</td><td>${precio?'$'+Number(precio).toLocaleString('es-AR'):'Consultar'}</td><td>✓ OK</td></tr>`;
       }
     });
