@@ -342,6 +342,7 @@ function renderListado(){
         <span class="tagchip ${p.activo?'ok':'off'}">${p.activo?'Visible':'Oculto'}</span>
         <div class="row-actions">
           <button class="iconbtn" onclick="abrirModal('${p.id}')">Editar</button>
+          <button class="iconbtn" onclick="duplicarProducto('${p.id}')">Duplicar</button>
           <button class="iconbtn" onclick="borrarProducto('${p.id}')">Borrar</button>
         </div>
       </div>`;
@@ -406,6 +407,28 @@ function abrirModal(id){
   renderMiniaturasActuales();
   document.getElementById('overlay').classList.add('show');
 }
+
+function duplicarProducto(id){
+  const p = productos.find(x=>x.id===id);
+  if(!p) return;
+  editandoId = null; // clave: null para que guarde como producto NUEVO
+  imagenesActuales = [];
+  document.getElementById('fImagen').value = '';
+  document.getElementById('modalTitle').textContent = 'Duplicar producto';
+  document.getElementById('fNombre').value = p.nombre + ' (copia)';
+  document.getElementById('fCategoria').value = p.categoria;
+  actualizarSubcategorias();
+  document.getElementById('fSubcategoria').value = p.subcategoria;
+  document.getElementById('fMedida').value = p.medida || '';
+  document.getElementById('fDescripcion').value = p.descripcion || '';
+  document.getElementById('fPrecio').value = p.precio ?? '';
+  document.getElementById('fDisponible').checked = p.disponible;
+  document.getElementById('fActivo').checked = p.activo;
+  imagenesActuales = [p.imagen_url, ...(p.imagenes_extra||[])].filter(Boolean);
+  renderMiniaturasActuales();
+  document.getElementById('overlay').classList.add('show');
+}
+
 function cerrarModal(){
   document.getElementById('overlay').classList.remove('show');
 }
