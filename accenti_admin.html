@@ -101,6 +101,14 @@
     background:var(--danger);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;
     cursor:pointer;border:2px solid var(--surface);
   }
+  .miniaturas-actuales .mini-estrella{
+    position:absolute;bottom:-6px;left:-6px;width:20px;height:20px;border-radius:50%;
+    background:var(--surface);color:var(--ink-soft);font-size:13px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;border:1.5px solid var(--line);
+  }
+  .miniaturas-actuales .mini-estrella.activa{
+    background:var(--pine);color:#fff;border-color:var(--pine);cursor:default;
+  }
 
   /* importador */
   .import-zone{
@@ -365,9 +373,15 @@ function renderMiniaturasActuales(){
   cont.innerHTML = imagenesActuales.map((url,i)=>`
     <div class="mini-wrap">
       <img src="${esc(url)}">
+      ${i===0 ? `<div class="mini-estrella activa" title="Portada actual">★</div>` : `<div class="mini-estrella" title="Hacer portada" onclick="hacerPortada(${i})">☆</div>`}
       <div class="mini-x" onclick="quitarImagenActual(${i})">✕</div>
     </div>
   `).join('');
+}
+function hacerPortada(i){
+  const [foto] = imagenesActuales.splice(i,1);
+  imagenesActuales.unshift(foto);
+  renderMiniaturasActuales();
 }
 function quitarImagenActual(i){
   imagenesActuales.splice(i,1);
