@@ -31,6 +31,48 @@
   }
   .wrap{max-width:1080px;margin:0 auto;padding:0 20px 60px;}
 
+  /* ---- hero video ---- */
+  .hero{
+    position:fixed; inset:0; z-index:200;
+    background:#151412; overflow:hidden;
+  }
+  .hero-video-blur{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; filter:blur(50px) brightness(.55); transform:scale(1.25);
+    display:none;
+  }
+  .hero-video-main{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:100%; height:100%; object-fit:cover;
+  }
+  .hero-overlay{
+    position:absolute; inset:0; z-index:2;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+    padding-bottom:64px; text-align:center;
+    background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%);
+  }
+  .hero-logo{
+    font-family:'Libre Franklin',sans-serif; font-weight:800; font-size:15vw;
+    color:#fff; margin:0; line-height:.9; letter-spacing:-2px;
+  }
+  .hero-tag{color:#fff; opacity:.85; font-size:14px; letter-spacing:2px; text-transform:uppercase; margin:6px 0 26px;}
+  .hero-enter{
+    border:1.5px solid #fff; background:rgba(255,255,255,.08); color:#fff;
+    padding:12px 26px; border-radius:999px; font-size:14px; font-weight:600;
+    cursor:pointer; backdrop-filter:blur(6px); display:flex; align-items:center; gap:8px;
+  }
+  .hero-enter:hover{background:rgba(255,255,255,.18);}
+  .hero-enter span{display:inline-block; animation:heroBounce 1.6s ease-in-out infinite;}
+  @keyframes heroBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(4px);}}
+  .hero-out{animation:heroFade .5s ease forwards;}
+  @keyframes heroFade{to{opacity:0; visibility:hidden;}}
+
+  @media(min-width:641px){
+    .hero-video-blur{display:block;}
+    .hero-video-main{width:auto; height:100%;}
+    .hero-logo{font-size:64px;}
+  }
+
   header.top{
     position:relative;
     padding:56px 20px 36px;
@@ -237,6 +279,20 @@
 </head>
 <body>
 
+<div class="hero" id="hero">
+  <video class="hero-video-blur" autoplay muted loop playsinline>
+    <source src="arena_y_azul.mp4" type="video/mp4">
+  </video>
+  <video class="hero-video-main" autoplay muted loop playsinline>
+    <source src="arena_y_azul.mp4" type="video/mp4">
+  </video>
+  <div class="hero-overlay">
+    <p class="hero-logo">baa</p>
+    <p class="hero-tag">ropa de casa</p>
+    <button class="hero-enter" onclick="entrarTienda()">Ver catálogo <span>↓</span></button>
+  </div>
+</div>
+
 <header class="top">
   <svg class="header-motas" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
     <circle cx="70" cy="90" r="42" fill="#201E1D"/>
@@ -289,6 +345,29 @@ const ICONOS = {
 };
 
 let productos = [];
+
+// ---------- HERO ----------
+function entrarTienda(){
+  const hero = document.getElementById('hero');
+  hero.classList.add('hero-out');
+  sessionStorage.setItem('baa_hero_visto', '1');
+  setTimeout(()=>{ hero.style.display = 'none'; }, 500);
+}
+if(sessionStorage.getItem('baa_hero_visto')){
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const hero = document.getElementById('hero');
+    if(hero) hero.style.display = 'none';
+  });
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const hero = document.getElementById('hero');
+  if(!hero) return;
+  hero.addEventListener('click', (e)=>{
+    if(e.target.closest('.hero-enter')) return;
+    entrarTienda();
+  });
+});
+
 let filtro = { categoria:"Todo", subcategoria:"Todas", medida:"Todas" };
 const MEDIDAS = ["One","Twin","Dos Plazas","Queen","King","Super King"];
 
