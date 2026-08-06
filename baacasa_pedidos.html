@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>baa — Pedidos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#F2EDE4; --surface:#FFFDF9; --ink:#2A2722; --ink-soft:#6B6356;
+    --pine:#3D4F46; --pine-soft:#E4EAE5; --plum:#8C4A5C; --plum-soft:#F1E2E5;
+    --gold:#C9A867; --gold-soft:#F3EAD3; --line:#DDD4C2; --danger:#A33B3B;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;}
+  .wrap{max-width:920px;margin:0 auto;padding:30px 20px 60px;}
+  h1{font-family:'Libre Franklin',sans-serif;font-weight:800;color:var(--pine);font-size:28px;margin:0;}
+  h2{font-family:'Libre Franklin',sans-serif;font-weight:800;color:var(--pine);font-size:19px;margin:0 0 4px;}
+  .sub{color:var(--ink-soft);font-size:13.5px;margin:4px 0 0;}
+
+  #loginBox{
+    max-width:380px;margin:90px auto;background:var(--surface);
+    border:1px solid var(--line);border-radius:16px;padding:32px;
+  }
+  #loginBox h1{text-align:center;margin-bottom:4px;}
+  #loginBox .sub{text-align:center;margin-bottom:24px;}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.3px;}
+  input[type=email],input[type=password],input[type=text],input[type=number],textarea,select{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+    font-family:'Inter',sans-serif;font-size:14px;background:#fff;color:var(--ink);
+  }
+  textarea{resize:vertical;min-height:60px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.5;}
+  button{cursor:pointer;font-family:'Inter',sans-serif;}
+  .btn{
+    padding:11px 18px;border-radius:9px;border:1.5px solid var(--pine);
+    background:var(--pine);color:#fff;font-weight:700;font-size:14px;
+  }
+  .btn:hover{opacity:.9;}
+  .btn-outline{background:transparent;color:var(--pine);}
+  .btn-outline:hover{background:var(--pine-soft);}
+  .btn-danger{border-color:var(--danger);background:transparent;color:var(--danger);}
+  .btn-danger:hover{background:#f5e6e6;}
+  .btn-sm{padding:6px 10px;font-size:12.5px;border-radius:7px;}
+  #loginError{color:var(--danger);font-size:13px;margin-top:10px;display:none;}
+
+  .topbar{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed var(--line);padding-bottom:18px;margin-bottom:24px;}
+  .topbar-actions{display:flex;gap:10px;}
+  a.btn{text-decoration:none;display:inline-flex;align-items:center;}
+
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  .card-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:28px;}
+
+  .buscador-row{display:flex;gap:8px;margin-top:6px;}
+  .buscador-row input{flex:1;}
+
+  .items-tabla{margin-top:16px;}
+  .item-row{
+    display:grid;grid-template-columns:1fr 60px 100px 100px 30px;gap:8px;align-items:center;
+    padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;
+  }
+  .item-row.head{font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);font-weight:700;border-bottom:2px solid var(--line);}
+  .item-row input{padding:6px 8px;font-size:13px;}
+  .item-nombre{font-weight:600;}
+  .item-subtotal{font-family:'JetBrains Mono',monospace;text-align:right;}
+  .item-quitar{color:var(--danger);text-align:center;font-weight:800;background:none;border:none;font-size:16px;}
+  .empty-items{color:var(--ink-soft);font-size:13.5px;padding:14px 0;text-align:center;}
+
+  .totales-box{margin-top:18px;background:var(--pine-soft);border-radius:10px;padding:16px 18px;}
+  .totales-box .fila{display:flex;justify-content:space-between;font-size:14px;padding:3px 0;}
+  .totales-box .fila.total{font-weight:800;font-size:17px;color:var(--pine);border-top:1px dashed var(--line);margin-top:6px;padding-top:8px;}
+  .totales-box .fila.margen{color:var(--ink-soft);font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+
+  .modal-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+
+  .filtro-estado{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .chip-estado{
+    padding:6px 14px;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;
+    border:1px solid var(--line);color:var(--ink-soft);background:var(--surface);
+  }
+  .chip-estado.active{background:var(--pine);color:#fff;border-color:var(--pine);}
+
+  .pedido-row{
+    background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .pedido-info{flex:1;min-width:160px;}
+  .pedido-cliente{font-weight:700;font-size:14px;}
+  .pedido-fecha{font-size:11.5px;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;}
+  .pedido-total{font-family:'JetBrains Mono',monospace;font-size:14px;min-width:100px;text-align:right;}
+  .pedido-margen{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);min-width:100px;text-align:right;}
+  .pedido-estado select{width:auto;padding:5px 8px;font-size:12.5px;font-weight:700;}
+  .empty-state{text-align:center;color:var(--ink-soft);padding:40px 0;font-size:14px;}
+
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:.25s;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media(max-width:640px){
+    .field-row{grid-template-columns:1fr;}
+    .item-row{grid-template-columns:1fr 46px 74px 74px 24px;font-size:12px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h1>baa</h1>
+  <p class="sub">Panel de pedidos</p>
+  <label>Email</label>
+  <input type="email" id="loginEmail" autocomplete="username">
+  <label>Contraseña</label>
+  <input type="password" id="loginPass" autocomplete="current-password">
+  <button class="btn btn-block" style="width:100%;margin-top:18px;" onclick="login()">Entrar</button>
+  <p id="loginError">Email o contraseña incorrectos.</p>
+</div>
+
+<div class="wrap" id="panel" style="display:none;">
+  <div class="topbar">
+    <div>
+      <h1>baa</h1>
+      <p class="sub">Pedidos y ventas</p>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn btn-outline" href="baacasa_admin.html">← Productos</a>
+      <button class="btn btn-outline" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="card-box">
+    <h2>Armar pedido</h2>
+    <p class="sub">Sumá productos, revisá el total y generá el mensaje para mandar por WhatsApp.</p>
+
+    <div class="field-row">
+      <div>
+        <label>Cliente</label>
+        <input type="text" id="pCliente" placeholder="Nombre del cliente" oninput="renderMensaje()">
+      </div>
+      <div>
+        <label>Forma de pago</label>
+        <select id="pFormaPago" onchange="renderMensaje()">
+          <option>Transferencia (20% off)</option>
+          <option>3 cuotas sin interés</option>
+          <option>Efectivo</option>
+          <option>Otro</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Agregar producto</label>
+    <div class="buscador-row">
+      <input type="text" id="buscadorProducto" list="productosLista" placeholder="Escribí el nombre del producto..." onkeydown="if(event.key==='Enter'){event.preventDefault();agregarItemDesdeBuscador();}">
+      <datalist id="productosLista"></datalist>
+      <button class="btn btn-outline" onclick="agregarItemDesdeBuscador()">+ Agregar</button>
+    </div>
+
+    <div class="items-tabla" id="itemsPedido"></div>
+
+    <div class="field-row" style="margin-top:14px;">
+      <div>
+        <label>Descuento manual ($, opcional)</label>
+        <input type="number" id="pDescuento" value="0" oninput="renderTotales();renderMensaje();">
+      </div>
+      <div>
+        <label>Notas (opcional, no va en el mensaje)</label>
+        <input type="text" id="pNotas" placeholder="Ej: seña recibida, envío a coordinar...">
+      </div>
+    </div>
+
+    <div class="totales-box" id="totalesBox"></div>
+
+    <label>Mensaje para WhatsApp <span style="text-transform:none;font-weight:400;">(se regenera al agregar productos — editalo después de eso)</span></label>
+    <textarea id="mensajeWsp" rows="9"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="copiarMensaje()">Copiar mensaje</button>
+      <a class="btn btn-outline" id="linkWsp" href="#" target="_blank" rel="noopener">Abrir WhatsApp</a>
+      <button class="btn" onclick="guardarPedido()">Guardar pedido</button>
+    </div>
+  </div>
+
+  <h2 style="margin-bottom:14px;">Historial</h2>
+  <div class="filtro-estado" id="filtroEstado"></div>
+  <div id="listadoPedidos"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL = "https://usdimcbrvbpydvkmacxf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzZGltY2JydmJweWR2a21hY3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NTExNDEsImV4cCI6MjEwMDIyNzE0MX0.ZR0g-xbxk0E1G0FTtP2nUuPunD3pjAmLXKVAU_vUqE4";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let catalogo = [];       // productos de la tienda
+let itemsActuales = [];  // items del pedido en armado
+let pedidos = [];        // historial
+let filtroEstadoActivo = 'Todos';
+
+function esc(s){
+  if(s===null||s===undefined) return "";
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function fmt(n){
+  return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n||0);
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// ---------- AUTH ----------
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+  document.getElementById('loginError').style.display = 'none';
+  mostrarPanel();
+}
+async function logout(){
+  await sb.auth.signOut();
+  document.getElementById('panel').style.display = 'none';
+  document.getElementById('loginBox').style.display = 'block';
+}
+async function checkSesion(){
+  const { data } = await sb.auth.getSession();
+  if(data.session) mostrarPanel();
+}
+function mostrarPanel(){
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('panel').style.display = 'block';
+  cargarCatalogo();
+  cargarPedidos();
+  renderItems(); renderTotales(); renderMensaje();
+}
+
+// ---------- CATÁLOGO (para el buscador) ----------
+async function cargarCatalogo(){
+  const { data, error } = await sb.from('productos').select('id,nombre,precio,precio_costo').order('nombre');
+  if(error){ toast('No se pudo cargar el catálogo'); console.error(error); return; }
+  catalogo = data || [];
+  const dl = document.getElementById('productosLista');
+  dl.innerHTML = catalogo.map(p=>`<option value="${esc(p.nombre)}">`).join('');
+}
+
+function agregarItemDesdeBuscador(){
+  const input = document.getElementById('buscadorProducto');
+  const nombreBuscado = input.value.trim();
+  if(!nombreBuscado) return;
+  let p = catalogo.find(x=>x.nombre.toLowerCase() === nombreBuscado.toLowerCase());
+  if(!p) p = catalogo.find(x=>x.nombre.toLowerCase().includes(nombreBuscado.toLowerCase()));
+  if(!p){ toast('No encontré ese producto'); return; }
+
+  const existente = itemsActuales.find(i=>i.producto_id === p.id);
+  if(existente){ existente.cantidad += 1; }
+  else{
+    itemsActuales.push({
+      producto_id: p.id,
+      nombre: p.nombre,
+      cantidad: 1,
+      precio_unitario: Number(p.precio) || 0,
+      costo_unitario: Number(p.precio_costo) || 0
+    });
+  }
+  input.value = '';
+  renderItems(); renderTotales(); renderMensaje();
+}
+
+function quitarItem(idx){
+  itemsActuales.splice(idx,1);
+  renderItems(); renderTotales(); renderMensaje();
+}
+function actualizarCantidad(idx, val){
+  itemsActuales[idx].cantidad = Math.max(1, Number(val)||1);
+  renderTotales(); renderMensaje();
+}
+function actualizarPrecioItem(idx, val){
+  itemsActuales[idx].precio_unitario = Number(val)||0;
+  renderTotales(); renderMensaje();
+}
+
+function renderItems(){
+  const cont = document.getElementById('itemsPedido');
+  if(itemsActuales.length===0){
+    cont.innerHTML = `<div class="empty-items">Todavía no agregaste productos.</div>`;
+    return;
+  }
+  let html = `<div class="item-row head"><span>Producto</span><span>Cant.</span><span>Precio u.</span><span>Subtotal</span><span></span></div>`;
+  itemsActuales.forEach((it,idx)=>{
+    const subtotal = it.cantidad * it.precio_unitario;
+    html += `
+    <div class="item-row">
+      <span class="item-nombre">${esc(it.nombre)}</span>
+      <input type="number" min="1" value="${it.cantidad}" onchange="actualizarCantidad(${idx}, this.value)">
+      <input type="number" step="0.01" value="${it.precio_unitario}" onchange="actualizarPrecioItem(${idx}, this.value)">
+      <span class="item-subtotal">${fmt(subtotal)}</span>
+      <button class="item-quitar" onclick="quitarItem(${idx})" title="Quitar">✕</button>
+    </div>`;
+  });
+  cont.innerHTML = html;
+}
+
+function calcularTotales(){
+  const descuento = Number(document.getElementById('pDescuento').value) || 0;
+  const subtotal = itemsActuales.reduce((a,it)=>a + it.cantidad*it.precio_unitario, 0);
+  const costoTotal = itemsActuales.reduce((a,it)=>a + it.cantidad*it.costo_unitario, 0);
+  const total = Math.max(0, subtotal - descuento);
+  const margen = total - costoTotal;
+  const margenPct = total>0 ? (margen/total*100) : 0;
+  return { subtotal, descuento, costoTotal, total, margen, margenPct };
+}
+
+function renderTotales(){
+  const { subtotal, descuento, costoTotal, total, margen, margenPct } = calcularTotales();
+  document.getElementById('totalesBox').innerHTML = `
+    <div class="fila"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+    ${descuento>0 ? `<div class="fila"><span>Descuento</span><span>-${fmt(descuento)}</span></div>` : ''}
+    <div class="fila total"><span>Total a cobrar</span><span>${fmt(total)}</span></div>
+    <div class="fila margen"><span>Costo total</span><span>${fmt(costoTotal)}</span></div>
+    <div class="fila margen"><span>Margen</span><span>${fmt(margen)} (${margenPct.toFixed(0)}%)</span></div>
+  `;
+}
+
+function renderMensaje(){
+  const cliente = document.getElementById('pCliente').value.trim();
+  const formaPago = document.getElementById('pFormaPago').value;
+  const { total } = calcularTotales();
+
+  let msg = `¡Hola${cliente ? ' ' + cliente : ''}! Te paso el resumen de tu pedido:\n\n`;
+  if(itemsActuales.length===0){
+    msg += `(agregá productos arriba)\n`;
+  } else {
+    itemsActuales.forEach(it=>{
+      msg += `• ${it.nombre} x${it.cantidad} — ${fmt(it.cantidad*it.precio_unitario)}\n`;
+    });
+  }
+  msg += `\nTotal: ${fmt(total)}\nForma de pago: ${formaPago}\n\n¡Gracias por elegir baa! 🐑`;
+
+  document.getElementById('mensajeWsp').value = msg;
+  document.getElementById('linkWsp').href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+}
+
+function copiarMensaje(){
+  const txt = document.getElementById('mensajeWsp').value;
+  navigator.clipboard.writeText(txt).then(()=>toast('Mensaje copiado'));
+}
+
+// ---------- GUARDAR PEDIDO ----------
+async function guardarPedido(){
+  if(itemsActuales.length===0){ toast('Sumá al menos un producto'); return; }
+  const cliente = document.getElementById('pCliente').value.trim() || null;
+  const formaPago = document.getElementById('pFormaPago').value;
+  const notas = document.getElementById('pNotas').value.trim() || null;
+  const { descuento, costoTotal, total } = calcularTotales();
+
+  const payload = {
+    cliente, forma_pago: formaPago, notas,
+    items: itemsActuales, descuento,
+    total, costo_total: costoTotal,
+    estado: 'pendiente'
+  };
+  const { error } = await sb.from('pedidos').insert(payload);
+  if(error){ toast('No se pudo guardar el pedido'); console.error(error); return; }
+
+  toast('Pedido guardado');
+  itemsActuales = [];
+  document.getElementById('pCliente').value = '';
+  document.getElementById('pDescuento').value = 0;
+  document.getElementById('pNotas').value = '';
+  renderItems(); renderTotales(); renderMensaje();
+  cargarPedidos();
+}
+
+// ---------- HISTORIAL ----------
+async function cargarPedidos(){
+  const { data, error } = await sb.from('pedidos').select('*').order('created_at', { ascending:false });
+  if(error){ toast('No se pudo cargar el historial'); console.error(error); return; }
+  pedidos = data || [];
+  renderFiltroEstado();
+  renderListadoPedidos();
+}
+
+function renderFiltroEstado(){
+  const cont = document.getElementById('filtroEstado');
+  const estados = ['Todos','pendiente','pagado','enviado'];
+  const labels = { Todos:'Todos', pendiente:'Pendiente', pagado:'Pagado', enviado:'Enviado' };
+  cont.innerHTML = estados.map(e=>
+    `<span class="chip-estado ${filtroEstadoActivo===e?'active':''}" onclick="setFiltroEstado('${e}')">${labels[e]}</span>`
+  ).join('');
+}
+function setFiltroEstado(e){
+  filtroEstadoActivo = e;
+  renderFiltroEstado();
+  renderListadoPedidos();
+}
+
+function renderListadoPedidos(){
+  const cont = document.getElementById('listadoPedidos');
+  let lista = pedidos;
+  if(filtroEstadoActivo !== 'Todos') lista = lista.filter(p=>p.estado===filtroEstadoActivo);
+
+  if(lista.length===0){
+    cont.innerHTML = `<div class="empty-state">No hay pedidos${filtroEstadoActivo!=='Todos' ? ' en este estado' : ' todavía'}.</div>`;
+    return;
+  }
+
+  cont.innerHTML = lista.map(p=>{
+    const fecha = new Date(p.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    const margen = (p.total||0) - (p.costo_total||0);
+    return `
+    <div class="pedido-row">
+      <div class="pedido-info">
+        <div class="pedido-cliente">${esc(p.cliente || 'Sin nombre')}</div>
+        <div class="pedido-fecha">${fecha} · ${(p.items||[]).length} producto${(p.items||[]).length===1?'':'s'} · ${esc(p.forma_pago||'')}</div>
+      </div>
+      <div>
+        <div class="pedido-total">${fmt(p.total)}</div>
+        <div class="pedido-margen">margen ${fmt(margen)}</div>
+      </div>
+      <div class="pedido-estado">
+        <select onchange="actualizarEstadoPedido('${p.id}', this.value)">
+          <option value="pendiente" ${p.estado==='pendiente'?'selected':''}>Pendiente</option>
+          <option value="pagado" ${p.estado==='pagado'?'selected':''}>Pagado</option>
+          <option value="enviado" ${p.estado==='enviado'?'selected':''}>Enviado</option>
+        </select>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="borrarPedido('${p.id}')">Borrar</button>
+    </div>`;
+  }).join('');
+}
+
+async function actualizarEstadoPedido(id, estado){
+  const { error } = await sb.from('pedidos').update({ estado }).eq('id', id);
+  if(error){ toast('No se pudo actualizar'); console.error(error); return; }
+  const p = pedidos.find(x=>x.id===id);
+  if(p) p.estado = estado;
+  toast('Estado actualizado');
+}
+
+async function borrarPedido(id){
+  if(!confirm('¿Borrar este pedido del historial?')) return;
+  const { error } = await sb.from('pedidos').delete().eq('id', id);
+  if(error){ toast('No se pudo borrar'); console.error(error); return; }
+  pedidos = pedidos.filter(x=>x.id!==id);
+  renderListadoPedidos();
+  toast('Pedido borrado');
+}
+
+checkSesion();
+</script>
+</body>
+</html>
