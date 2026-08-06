@@ -144,7 +144,7 @@
       </div>
       <div>
         <label>Forma de pago</label>
-        <select id="pFormaPago" onchange="renderMensaje()">
+        <select id="pFormaPago" onchange="renderTotales();renderMensaje();">
           <option>Transferencia (20% off)</option>
           <option>3 cuotas sin interés</option>
           <option>Efectivo</option>
@@ -312,20 +312,24 @@ function renderItems(){
 }
 
 function calcularTotales(){
-  const descuento = Number(document.getElementById('pDescuento').value) || 0;
+  const descuentoManual = Number(document.getElementById('pDescuento').value) || 0;
+  const formaPago = document.getElementById('pFormaPago').value;
   const subtotal = itemsActuales.reduce((a,it)=>a + it.cantidad*it.precio_unitario, 0);
   const costoTotal = itemsActuales.reduce((a,it)=>a + it.cantidad*it.costo_unitario, 0);
-  const total = Math.max(0, subtotal - descuento);
+  const esTransferencia = formaPago.includes('Transferencia');
+  const descuentoTransferencia = esTransferencia ? Math.round(subtotal * 0.20) : 0;
+  const total = Math.max(0, subtotal - descuentoTransferencia - descuentoManual);
   const margen = total - costoTotal;
   const margenPct = total>0 ? (margen/total*100) : 0;
-  return { subtotal, descuento, costoTotal, total, margen, margenPct };
+  return { subtotal, descuentoTransferencia, descuentoManual, costoTotal, total, margen, margenPct };
 }
 
 function renderTotales(){
-  const { subtotal, descuento, costoTotal, total, margen, margenPct } = calcularTotales();
+  const { subtotal, descuentoTransferencia, descuentoManual, costoTotal, total, margen, margenPct } = calcularTotales();
   document.getElementById('totalesBox').innerHTML = `
     <div class="fila"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-    ${descuento>0 ? `<div class="fila"><span>Descuento</span><span>-${fmt(descuento)}</span></div>` : ''}
+    ${descuentoTransferencia>0 ? `<div class="fila"><span>Descuento transferencia (20%)</span><span>-${fmt(descuentoTransferencia)}</span></div>` : ''}
+    ${descuentoManual>0 ? `<div class="fila"><span>Descuento manual</span><span>-${fmt(descuentoManual)}</span></div>` : ''}
     <div class="fila total"><span>Total a cobrar</span><span>${fmt(total)}</span></div>
     <div class="fila margen"><span>Costo total</span><span>${fmt(costoTotal)}</span></div>
     <div class="fila margen"><span>Margen</span><span>${fmt(margen)} (${margenPct.toFixed(0)}%)</span></div>
@@ -362,11 +366,12 @@ async function guardarPedido(){
   const cliente = document.getElementById('pCliente').value.trim() || null;
   const formaPago = document.getElementById('pFormaPago').value;
   const notas = document.getElementById('pNotas').value.trim() || null;
-  const { descuento, costoTotal, total } = calcularTotales();
+  const { descuentoTransferencia, descuentoManual, costoTotal, total } = calcularTotales();
+  const descuentoTotal = descuentoTransferencia + descuentoManual;
 
   const payload = {
     cliente, forma_pago: formaPago, notas,
-    items: itemsActuales, descuento,
+    items: itemsActuales, descuento: descuentoTotal,
     total, costo_total: costoTotal,
     estado: 'pendiente'
   };
