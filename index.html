@@ -384,6 +384,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .ed-foot .btn{flex:1;}
 .ed-foot .aparte{flex:none;}
 
+dialog.modal.ancho{width:min(760px,calc(100vw - 24px));}
+.tabla-cambios{width:100%;border-collapse:collapse;font-size:15px;}
+.tabla-cambios th,.tabla-cambios td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--edge);}
+.tabla-cambios th{font-weight:800;}
+.tabla-cambios td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.resumen{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px;}
+.resumen b{display:block;font-size:22px;line-height:1.1;}
+.resumen span{flex:1 1 120px;border:1.5px solid var(--edge);border-radius:14px;padding:10px 12px;font-weight:700;}
 dialog.modal{
   position:fixed;inset:0;margin:auto;width:min(520px,calc(100vw - 24px));height:fit-content;max-height:90svh;border-radius:24px;padding:24px;
 }
@@ -395,6 +403,7 @@ dialog.modal p{margin:0 0 16px;line-height:1.6;}
 .progreso{height:12px;border-radius:999px;background:var(--bg-2);overflow:hidden;margin:14px 0 8px;}
 .progreso i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease;}
 .csv-prev{max-height:220px;overflow:auto;border:1.5px solid var(--edge);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6;}
+dialog.ancho .csv-prev{max-height:min(52svh,520px);}
 .csv-prev .err{color:var(--danger);font-weight:700;}
 .error-msg{color:var(--danger);font-weight:700;margin:10px 0 0;min-height:1.4em;}
 
@@ -492,6 +501,8 @@ dialog.modal p{margin:0 0 16px;line-height:1.6;}
 <div class="menu" id="menu" hidden>
   <button type="button" data-act="vista-cliente">Ver como cliente</button>
   <button type="button" id="btnPrecios" data-act="precios">Mostrar precios al público</button>
+  <button type="button" data-act="lista-proveedor">Actualizar desde lista del proveedor</button>
+  <button type="button" data-act="fotos-numeradas">Subir fotos por número</button>
   <button type="button" data-act="importar">Importar productos desde CSV</button>
   <button type="button" data-act="achicar-fotos">Achicar las fotos</button>
   <button type="button" data-act="salir">Cerrar sesión</button>
@@ -563,6 +574,32 @@ dialog.modal p{margin:0 0 16px;line-height:1.6;}
 </dialog>
 
 <!-- Importar CSV -->
+<!-- Actualizar desde la lista del proveedor -->
+<dialog id="dlgLista" class="modal ancho" aria-labelledby="lpTitulo">
+  <h2 id="lpTitulo">Actualizar desde lista del proveedor</h2>
+  <p id="lpAyuda">Arrastrá la planilla que te mandó el proveedor. Te muestro qué cambia antes de tocar nada.</p>
+  <input type="file" id="lpArchivo" accept=".xlsx,.xls">
+  <div class="csv-prev" id="lpPrev" hidden></div>
+  <div class="modal-actions">
+    <button class="btn" type="button" id="lpConfirmar" data-act="lp-confirmar" disabled>Aplicar cambios</button>
+    <button class="btn sec" type="button" data-act="cerrar">Cerrar</button>
+  </div>
+</dialog>
+
+<!-- Subir fotos por numero -->
+<dialog id="dlgFotosNum" class="modal ancho" aria-labelledby="fnTitulo">
+  <h2 id="fnTitulo">Subir fotos por número</h2>
+  <p>Elegí todas las fotos juntas. Las reparte sola buscando el número en el nombre del archivo: <b>1066.jpg</b> va de portada, <b>1066 detalle.jpg</b> y <b>1066 casa.jpg</b> van como fotos extra. Las achica al subirlas.</p>
+  <input type="file" id="fnArchivos" accept="image/*" multiple>
+  <div class="csv-prev" id="fnPrev" hidden></div>
+  <div class="progreso" aria-hidden="true"><i id="fnBarra"></i></div>
+  <p id="fnEstado" aria-live="polite" style="margin:0;font-weight:700;"></p>
+  <div class="modal-actions">
+    <button class="btn" type="button" id="fnConfirmar" data-act="fn-confirmar" disabled>Subir</button>
+    <button class="btn sec" type="button" data-act="fn-cerrar">Cerrar</button>
+  </div>
+</dialog>
+
 <dialog id="dlgImport" class="modal" aria-labelledby="imTitulo">
   <h2 id="imTitulo">Importar productos</h2>
   <p>Un archivo CSV con las columnas nombre, categoria y subcategoria. Opcionales: medida, proveedor, descripcion, precio y costo. Los productos entran ocultos hasta que les pongas fotos.</p>
@@ -660,6 +697,8 @@ const S = {
   demo: false,
   error: false,
   mostrarPrecios: CFG.MOSTRAR_PRECIOS,
+  ajustes: {},
+  proveedorLista: 'Jean Cartier',
   filtro: { cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos' }
 };
 let sb = null;
@@ -1396,6 +1435,257 @@ async function achicarExistentes(){
 }
 
 /* ---------------- acciones (clicks) ---------------- */
+/* ---------------- listas de proveedores ---------------- */
+const RUBROS = {
+  'juego de sabanas':['Ropa de cama','Sábanas'], 'sabana ajustable':['Ropa de cama','Sábanas'], 'sabana':['Ropa de cama','Sábanas'],
+  'acolchado':['Ropa de cama','Acolchados'], 'kit acolchado':['Ropa de cama','Acolchados'], 'kit de acolchado':['Ropa de cama','Acolchados'],
+  'cover':['Ropa de cama','Fundas nórdicas'], 'kit cover':['Ropa de cama','Fundas nórdicas'],
+  'kit duvet':['Ropa de cama','Fundas nórdicas'], 'funda nordica':['Ropa de cama','Fundas nórdicas'],
+  'frazada':['Ropa de cama','Frazadas'], 'manta':['Ropa de cama','Frazadas'],
+  'cubrecama':['Ropa de cama','Cubrecamas'], 'pie de cama':['Ropa de cama','Cubrecamas'],
+  'funda de almohadon':['Ropa de cama','Accesorios'], 'funda de almohada':['Ropa de cama','Accesorios'],
+  'set funda de almohada':['Ropa de cama','Accesorios'], 'relleno de almohadon':['Ropa de cama','Accesorios'],
+  'almohada':['Ropa de cama','Accesorios'], 'almohadon':['Ropa de cama','Accesorios'], 'pillow':['Ropa de cama','Accesorios'],
+  'cubresommier':['Ropa de cama','Accesorios'], 'funda de colchon':['Ropa de cama','Accesorios'],
+  'protector de colchon':['Ropa de cama','Accesorios'], 'relleno':['Ropa de cama','Accesorios'],
+  'toallon':['Baño','Juegos de toallas'], 'toalla':['Baño','Juegos de toallas'], 'toallita':['Baño','Juegos de toallas'],
+  'juego de toallas':['Baño','Juegos de toallas'], 'juego de toalla y toallon':['Baño','Juegos de toallas'],
+  'set de bano':['Baño','Juegos de toallas'],
+  'alfombra de bano':['Baño','Alfombritas'], 'cortina de bano':['Baño','Cortinas de baño']
+};
+const MED_PROV = {
+  '1 plaza':'Twin', 'twin':'Twin', '1 1/2 plaza':'One', '1 1/2 plazas':'One', 'one':'One',
+  '2 1/2 plaza':'Dos Plazas', '2 1/2 plazas':'Dos Plazas', '2 plazas':'Dos Plazas', 'dos plazas':'Dos Plazas',
+  'queen':'Queen', 'king':'King', 'super king':'Super King'
+};
+const sinAc = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+function tituloCase(s){
+  const chicas = new Set(['de','del','la','el','y','con','a','en','por']);
+  return String(s || '').trim().toLowerCase().split(/\s+/)
+    .map((p, i) => (i && chicas.has(p)) ? p : p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+let XLSXlisto = null;
+function cargarXLSX(){
+  if (XLSXlisto) return XLSXlisto;
+  XLSXlisto = new Promise((ok, mal) => {
+    if (window.XLSX) return ok(window.XLSX);
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => window.XLSX ? ok(window.XLSX) : mal(new Error('xlsx'));
+    s.onerror = () => mal(new Error('No se pudo cargar el lector de planillas. ¿Hay internet?'));
+    document.head.appendChild(s);
+  });
+  return XLSXlisto;
+}
+const LP = { filas: [], plan: null };
+
+async function leerListaProveedor(file){
+  const XLSX = await cargarXLSX();
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  for (const nombreHoja of wb.SheetNames){
+    const m = XLSX.utils.sheet_to_json(wb.Sheets[nombreHoja], { header: 1, blankrows: false, defval: null });
+    for (let i = 0; i < Math.min(m.length, 30); i++){
+      const fila = (m[i] || []).map(sinAc);
+      const iCod = fila.findIndex(c => c === 'codbarras' || c === 'cod barra' || c === 'codigo de barras');
+      if (iCod < 0) continue;
+      const buscar = (...ns) => { for (const n of ns){ const j = fila.indexOf(n); if (j >= 0) return j; } return -1; };
+      const sig = (m[i + 1] || []).map(sinAc);
+      let iCosto = sig.indexOf('l1');
+      if (iCosto < 0) iCosto = buscar('precio', 'precio unitario', 'costo');
+      const ix = {
+        cod: iCod, foto: buscar('foto'), rubro: buscar('rubro'), medida: buscar('medida'),
+        art: buscar('articulo'), dis: buscar('diseno/linea', 'diseno', 'linea'),
+        col: buscar('modelo/color', 'color', 'modelo'), disp: buscar('disponibilidad'), costo: iCosto
+      };
+      if (ix.rubro < 0 || ix.costo < 0) continue;
+      const filas = [];
+      for (let k = i + 1; k < m.length; k++){
+        const f = m[k] || [];
+        const cod = f[ix.cod] == null ? '' : String(f[ix.cod]).trim();
+        const costo = Number(f[ix.costo]);
+        const rubro = f[ix.rubro] == null ? '' : String(f[ix.rubro]).trim();
+        if (!cod || !rubro || !isFinite(costo) || costo <= 0) continue;
+        if (sinAc(rubro) === 'catalogo') continue;
+        filas.push({
+          codigo: cod,
+          codigo_foto: ix.foto >= 0 && f[ix.foto] != null && /^\d{3,5}$/.test(String(f[ix.foto]).trim()) ? String(f[ix.foto]).trim() : null,
+          rubro, medidaProv: ix.medida >= 0 && f[ix.medida] != null ? String(f[ix.medida]).replace(/\s+/g, ' ').trim() : '',
+          articulo: ix.art >= 0 && f[ix.art] != null ? String(f[ix.art]).trim() : '',
+          diseno: ix.dis >= 0 && f[ix.dis] != null ? String(f[ix.dis]).replace(/"/g, '').trim() : '',
+          color: ix.col >= 0 && f[ix.col] != null ? String(f[ix.col]).trim() : '',
+          costo: Math.round(costo),
+          disponible: ix.disp < 0 ? null : !/no disponible|sin stock|agotado/i.test(String(f[ix.disp] || ''))
+        });
+      }
+      if (filas.length) return { hoja: nombreHoja, filas };
+    }
+  }
+  throw new Error('No encontré las columnas de la lista (hace falta "Codbarras" y "Precio").');
+}
+
+function planDeActualizacion(filas){
+  const margen = Number(S.ajustes.margen_cuotas) || 1.94;
+  const porCodigo = new Map();
+  S.productos.forEach(p => { if (p.codigo) porCodigo.set(String(p.codigo).trim(), p); });
+  const precioDe = costo => Math.round(costo * margen / 100) * 100;
+  const plan = { precio: [], stock: [], nuevos: [], igual: 0, fueraDeCat: 0, margen };
+  for (const f of filas){
+    const p = porCodigo.get(f.codigo);
+    if (p){
+      const costoViejo = p.precio_costo == null ? null : Number(p.precio_costo);
+      let toco = false;
+      if (costoViejo !== f.costo){
+        plan.precio.push({ p, nombre: p.nombre, costoViejo, costo: f.costo,
+                           precioViejo: p.precio == null ? null : Number(p.precio), precio: precioDe(f.costo) });
+        toco = true;
+      }
+      if (f.disponible !== null && !!p.disponible !== f.disponible){
+        plan.stock.push({ p, nombre: p.nombre, de: !!p.disponible, a: f.disponible }); toco = true;
+      }
+      if (!toco) plan.igual++;
+      continue;
+    }
+    const cat = RUBROS[sinAc(f.rubro)];
+    if (!cat){ plan.fueraDeCat++; continue; }
+    const med = MED_PROV[sinAc(f.medidaProv)] || '';
+    const base = tituloCase(`${f.rubro} ${f.diseno} ${f.color}`.replace(/\s+/g, ' ').trim());
+    const cola = med || (f.medidaProv && f.medidaProv !== '-' ? f.medidaProv : '');
+    plan.nuevos.push({
+      nombre: `${base}${cola ? ' ' + cola : ''}`.trim(), categoria: cat[0], subcategoria: cat[1],
+      medida: med, precio: precioDe(f.costo), precio_costo: f.costo, proveedor: S.proveedorLista || 'Jean Cartier',
+      codigo: f.codigo, codigo_foto: f.codigo_foto, disponible: f.disponible !== false, activo: false
+    });
+  }
+  return plan;
+}
+
+function pintarPlanLista(plan){
+  const prev = $('#lpPrev'), btn = $('#lpConfirmar');
+  const n = plan.precio.length + plan.stock.length + plan.nuevos.length;
+  const bajan = plan.stock.filter(x => !x.a).length, suben = plan.stock.length - bajan;
+  let h = `<div class="resumen">
+    <span>cambian de precio<b>${plan.precio.length}</b></span>
+    <span>se quedaron sin stock<b>${bajan}</b></span>
+    <span>volvieron a tener<b>${suben}</b></span>
+    <span>productos nuevos<b>${plan.nuevos.length}</b></span>
+    <span>sin cambios<b>${plan.igual}</b></span></div>`;
+  if (plan.fueraDeCat) h += `<p>Dejé afuera ${plan.fueraDeCat} filas de rubros que no están en tus categorías (batas, manteles, repasadores y parecidos).</p>`;
+  if (plan.precio.length){
+    h += `<h3>Precios (multiplicás el costo por ${String(plan.margen).replace(".", ",")})</h3><table class="tabla-cambios"><tr><th>Producto</th><th>Costo</th><th>Precio en 3 cuotas</th></tr>`;
+    plan.precio.slice(0, 12).forEach(c => {
+      h += `<tr><td>${esc(c.nombre)}</td><td class="num">${c.costoViejo == null ? '—' : fmt(c.costoViejo)} → ${fmt(c.costo)}</td>` +
+           `<td class="num">${c.precioViejo == null ? '—' : fmt(c.precioViejo)} → <b>${fmt(c.precio)}</b></td></tr>`;
+    });
+    if (plan.precio.length > 12) h += `<tr><td colspan="3">y ${plan.precio.length - 12} más</td></tr>`;
+    h += `</table>`;
+  }
+  if (plan.stock.length){
+    h += `<h3>Stock</h3><table class="tabla-cambios"><tr><th>Producto</th><th>Queda</th></tr>`;
+    plan.stock.slice(0, 12).forEach(c => { h += `<tr><td>${esc(c.nombre)}</td><td>${c.a ? 'con stock' : 'sin stock'}</td></tr>`; });
+    if (plan.stock.length > 12) h += `<tr><td colspan="2">y ${plan.stock.length - 12} más</td></tr>`;
+    h += `</table>`;
+  }
+  if (plan.nuevos.length){
+    h += `<h3>Productos nuevos</h3><p>Entran ocultos, sin publicar, hasta que les pongas fotos.</p><table class="tabla-cambios"><tr><th>Nombre</th><th>Dónde</th><th>Precio</th></tr>`;
+    plan.nuevos.slice(0, 12).forEach(c => {
+      h += `<tr><td>${esc(c.nombre)}</td><td>${esc(c.subcategoria)}</td><td class="num">${fmt(c.precio)}</td></tr>`;
+    });
+    if (plan.nuevos.length > 12) h += `<tr><td colspan="3">y ${plan.nuevos.length - 12} más</td></tr>`;
+    h += `</table>`;
+  }
+  if (!n) h += `<p><b>No hay nada que cambiar.</b> La lista coincide con lo que ya tenés.</p>`;
+  prev.hidden = false; prev.innerHTML = h;
+  btn.disabled = !n; btn.textContent = n ? `Aplicar ${n} cambios` : 'Aplicar cambios';
+}
+
+async function aplicarLista(){
+  const plan = LP.plan; if (!plan) return;
+  const btn = $('#lpConfirmar'); btn.disabled = true; btn.textContent = 'Aplicando…';
+  let hechos = 0, fallos = 0;
+  try {
+    for (const c of plan.precio){
+      try { const fila = await api.update(c.p.id, { precio: c.precio, precio_costo: c.costo }); Object.assign(c.p, fila); hechos++; }
+      catch (e){ console.error(e); fallos++; }
+    }
+    for (const c of plan.stock){
+      try { const fila = await api.update(c.p.id, { disponible: c.a }); Object.assign(c.p, fila); hechos++; }
+      catch (e){ console.error(e); fallos++; }
+    }
+    if (plan.nuevos.length){
+      try { await api.insertMany(plan.nuevos); hechos += plan.nuevos.length; }
+      catch (e){ console.error(e); fallos += plan.nuevos.length; }
+    }
+    if (!S.demo) S.productos = await apiReal.list(true);
+    $('#dlgLista').close(); renderTodo();
+    toast(fallos ? `Se aplicaron ${hechos} cambios. ${fallos} fallaron.` : `Listo, ${hechos} cambios aplicados.`, fallos ? 'mal' : '');
+  } catch (e){ falla(e, 'No se pudo aplicar la lista.'); btn.disabled = false; btn.textContent = 'Aplicar cambios'; }
+}
+
+/* ---------------- fotos numeradas ---------------- */
+const FN = { grupos: null, corriendo: false, parar: false };
+function analizarFotos(files){
+  const prev = $('#fnPrev'), btn = $('#fnConfirmar');
+  const porCodigo = new Map();
+  S.productos.forEach(p => { if (p.codigo_foto) { const k = String(p.codigo_foto).trim();
+    if (!porCodigo.has(k)) porCodigo.set(k, []); porCodigo.get(k).push(p); } });
+  const grupos = new Map(); let sueltas = 0;
+  [...files].forEach(f => {
+    const m = f.name.match(/(\d{3,5})/);
+    const k = m && porCodigo.has(m[1]) ? m[1] : null;
+    if (!k){ sueltas++; return; }
+    const extra = /detalle|casa|amb|ambient|2|3/i.test(f.name.replace(/^\s*\d{3,5}/, ''));
+    if (!grupos.has(k)) grupos.set(k, { portada: null, extras: [] });
+    const g = grupos.get(k);
+    if (!extra && !g.portada) g.portada = f; else g.extras.push(f);
+  });
+  FN.grupos = { grupos, porCodigo };
+  const prods = [...grupos.keys()].reduce((n, k) => n + porCodigo.get(k).length, 0);
+  let h = `<div class="resumen"><span>fotos reconocidas<b>${[...files].length - sueltas}</b></span>` +
+          `<span>productos que reciben foto<b>${prods}</b></span>` +
+          `<span>no las pude ubicar<b>${sueltas}</b></span></div>`;
+  if (sueltas) h += `<p>Las que no ubiqué son las que no tienen un número que coincida con ningún producto. Las salteo.</p>`;
+  if (!grupos.size) h += `<p><b>Ninguna foto coincide.</b> Primero importá los productos desde la lista del proveedor, que es lo que trae los números.</p>`;
+  prev.hidden = false; prev.innerHTML = h;
+  btn.disabled = !grupos.size;
+  btn.textContent = grupos.size ? `Subir ${[...files].length - sueltas} fotos` : 'Subir';
+}
+async function subirFotosNumeradas(){
+  if (!FN.grupos || FN.corriendo) return;
+  const { grupos, porCodigo } = FN.grupos;
+  const btn = $('#fnConfirmar'), est = $('#fnEstado'), barra = $('#fnBarra');
+  FN.corriendo = true; FN.parar = false; btn.disabled = true;
+  const total = [...grupos.values()].reduce((n, g) => n + (g.portada ? 1 : 0) + g.extras.length, 0);
+  let hechas = 0, fallos = 0;
+  for (const [k, g] of grupos){
+    if (FN.parar) break;
+    const urls = { portada: null, extras: [] };
+    for (const [tipo, f] of [...(g.portada ? [['p', g.portada]] : []), ...g.extras.map(x => ['e', x])]){
+      if (FN.parar) break;
+      try {
+        const { blob } = await achicar(f);
+        const u = await api.subir(blob);
+        if (tipo === 'p') urls.portada = u; else urls.extras.push(u);
+      } catch (e){ console.error(e); fallos++; }
+      hechas++;
+      barra.style.width = (total ? hechas / total * 100 : 100) + '%';
+      est.textContent = `Foto ${hechas} de ${total}.`;
+    }
+    for (const p of porCodigo.get(k)){
+      const patch = {};
+      if (urls.portada) patch.imagen_url = urls.portada;
+      if (urls.extras.length) patch.imagenes_extra = [...(p.imagenes_extra || []), ...urls.extras];
+      if (!Object.keys(patch).length) continue;
+      try { const fila = await api.update(p.id, patch); Object.assign(p, fila); }
+      catch (e){ console.error(e); fallos++; }
+    }
+  }
+  FN.corriendo = false; btn.disabled = false;
+  est.textContent = fallos ? `Terminé con ${fallos} errores.` : 'Listo.';
+  if (!S.demo) { try { S.productos = await apiReal.list(true); } catch (e){} }
+  renderTodo();
+  toast(fallos ? `Subí las fotos, ${fallos} fallaron.` : 'Fotos subidas.', fallos ? 'mal' : '');
+}
+
 const A = {
   cat(t){ S.filtro = { cat: t.dataset.v, sub: 'Todas', medida: 'Todas', extra: 'Todos' }; renderTodo(); scrollACatalogo(); },
   sub(t){ S.filtro.sub = t.dataset.v; S.filtro.medida = 'Todas'; renderSub(); renderGrid(); },
@@ -1427,6 +1717,21 @@ const A = {
       toast(prender ? 'Listo, ya se ven los precios.' : 'Listo, los precios quedaron ocultos.');
     } catch (e) { console.error(e); toast('No se pudo guardar el cambio.', 'mal'); }
   },
+  'lista-proveedor'(){
+    $('#menu').hidden = true;
+    $('#lpArchivo').value = ''; $('#lpPrev').hidden = true;
+    $('#lpConfirmar').disabled = true; $('#lpConfirmar').textContent = 'Aplicar cambios';
+    LP.filas = []; LP.plan = null; $('#dlgLista').showModal();
+  },
+  'lp-confirmar'(){ aplicarLista(); },
+  'fotos-numeradas'(){
+    $('#menu').hidden = true;
+    $('#fnArchivos').value = ''; $('#fnPrev').hidden = true; $('#fnEstado').textContent = '';
+    $('#fnBarra').style.width = '0%'; $('#fnConfirmar').disabled = true; $('#fnConfirmar').textContent = 'Subir';
+    FN.grupos = null; $('#dlgFotosNum').showModal();
+  },
+  'fn-confirmar'(){ subirFotosNumeradas(); },
+  'fn-cerrar'(){ if (FN.corriendo) FN.parar = true; $('#dlgFotosNum').close(); },
   importar(){ $('#menu').hidden = true; $('#imArchivo').value = ''; $('#imPrev').hidden = true; $('#imConfirmar').disabled = true; $('#imConfirmar').textContent = 'Importar'; CSV.filas = []; $('#dlgImport').showModal(); },
   'im-confirmar'(){ confirmarImport(); },
   'im-plantilla'(){ descargarPlantilla(); },
@@ -1461,7 +1766,10 @@ async function cargar(){
       api = apiReal;
       try {
         const a = await apiReal.ajustes();
-        if (a && typeof a.mostrar_precios === 'boolean') S.mostrarPrecios = a.mostrar_precios;
+        if (a){
+          S.ajustes = a;
+          if (typeof a.mostrar_precios === 'boolean') S.mostrarPrecios = a.mostrar_precios;
+        }
       } catch (e) { console.error(e); }
       let vistaCliente = false;
       try { vistaCliente = !!sessionStorage.getItem('baa_vista_cliente'); } catch (e) {}
@@ -1525,6 +1833,19 @@ function bind(){
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader(); r.onload = () => leerCSV(String(r.result)); r.readAsText(f, 'UTF-8');
   });
+  $('#lpArchivo').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const prev = $('#lpPrev'); prev.hidden = false; prev.innerHTML = 'Leyendo la planilla…';
+    try {
+      const { filas } = await leerListaProveedor(f);
+      LP.filas = filas; LP.plan = planDeActualizacion(filas); pintarPlanLista(LP.plan);
+    } catch (err){
+      console.error(err); prev.innerHTML = `<span class="err">${esc(err.message || 'No pude leer el archivo.')}</span>`;
+      $('#lpConfirmar').disabled = true;
+    }
+  });
+  $('#fnArchivos').addEventListener('change', e => { if (e.target.files.length) analizarFotos(e.target.files); });
+  $('#dlgFotosNum').addEventListener('close', () => { if (FN.corriendo) FN.parar = true; });
   $('#dlgFotos').addEventListener('close', () => { if (F.corriendo) F.parar = true; });
   window.addEventListener('hashchange', procesarHash);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = $('#menu'); if (m) m.hidden = true; } });
