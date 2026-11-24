@@ -1528,10 +1528,14 @@ function planDeActualizacion(filas){
   const porCodigo = new Map();
   S.productos.forEach(p => { if (p.codigo) porCodigo.set(String(p.codigo).trim(), p); });
   const precioDe = costo => Math.round(costo * margen / 100) * 100;
-  const plan = { precio: [], stock: [], nuevos: [], igual: 0, fueraDeCat: 0, margen };
+  const plan = { precio: [], stock: [], nuevos: [], discontinuados: [], igual: 0, fueraDeCat: 0, margen };
+  const enLista = new Set(filas.map(f => f.codigo));
+  const deQuien = {};
   for (const f of filas){
     const p = porCodigo.get(f.codigo);
     if (p){
+      const q = String(p.proveedor || '').trim();
+      if (q) deQuien[q] = (deQuien[q] || 0) + 1;
       const costoViejo = p.precio_costo == null ? null : Number(p.precio_costo);
       let toco = false;
       if (costoViejo !== f.costo){
@@ -1556,7 +1560,25 @@ function planDeActualizacion(filas){
       codigo: f.codigo, codigo_foto: f.codigo_foto, disponible: f.disponible !== false, activo: false
     });
   }
+  const prov = Object.keys(deQuien).sort((a, b) => deQuien[b] - deQuien[a])[0];
+  if (prov){
+    plan.proveedor = prov;
+    plan.discontinuados = S.productos.filter(p =>
+      p.activo && p.codigo && !enLista.has(String(p.codigo).trim()) &&
+      String(p.proveedor || '').trim() === prov);
+  }
   return plan;
+}
+
+function contarPlan(plan){
+  const ocultar = $('#lpOcultar');
+  const disc = (ocultar && ocultar.checked) ? plan.discontinuados.length : 0;
+  return plan.precio.length + plan.stock.length + plan.nuevos.length + disc;
+}
+function refrescarBotonLista(){
+  const plan = LP.plan; if (!plan) return;
+  const n = contarPlan(plan), btn = $('#lpConfirmar');
+  btn.disabled = !n; btn.textContent = n ? `Aplicar ${n} cambios` : 'Aplicar cambios';
 }
 
 function pintarPlanLista(plan){
@@ -1568,6 +1590,7 @@ function pintarPlanLista(plan){
     <span>se quedaron sin stock<b>${bajan}</b></span>
     <span>volvieron a tener<b>${suben}</b></span>
     <span>productos nuevos<b>${plan.nuevos.length}</b></span>
+    <span>ya no los trae<b>${plan.discontinuados.length}</b></span>
     <span>sin cambios<b>${plan.igual}</b></span></div>`;
   if (plan.fueraDeCat) h += `<p>Dejé afuera ${plan.fueraDeCat} filas de rubros que no están en tus categorías (batas, manteles, repasadores y parecidos).</p>`;
   if (plan.precio.length){
@@ -1593,9 +1616,21 @@ function pintarPlanLista(plan){
     if (plan.nuevos.length > 12) h += `<tr><td colspan="3">y ${plan.nuevos.length - 12} más</td></tr>`;
     h += `</table>`;
   }
-  if (!n) h += `<p><b>No hay nada que cambiar.</b> La lista coincide con lo que ya tenés.</p>`;
+  if (plan.discontinuados.length){
+    h += `<h3>Ya no están en la lista</h3>` +
+         `<p>Estos los vendés hoy pero ${esc(plan.proveedor)} no los trae en esta lista. Si los discontinuó, conviene ocultarlos para no vender lo que no podés reponer.</p>` +
+         `<p><label style="display:flex;gap:10px;align-items:center;font-weight:700;">` +
+         `<input type="checkbox" id="lpOcultar" checked> Ocultar estos ${plan.discontinuados.length}</label></p>` +
+         `<table class="tabla-cambios"><tr><th>Producto</th></tr>`;
+    plan.discontinuados.slice(0, 12).forEach(p => { h += `<tr><td>${esc(p.nombre)}</td></tr>`; });
+    if (plan.discontinuados.length > 12) h += `<tr><td>y ${plan.discontinuados.length - 12} más</td></tr>`;
+    h += `</table>`;
+  }
+  if (!n && !plan.discontinuados.length) h += `<p><b>No hay nada que cambiar.</b> La lista coincide con lo que ya tenés.</p>`;
   prev.hidden = false; prev.innerHTML = h;
-  btn.disabled = !n; btn.textContent = n ? `Aplicar ${n} cambios` : 'Aplicar cambios';
+  const chk = $('#lpOcultar');
+  if (chk) chk.addEventListener('change', refrescarBotonLista);
+  refrescarBotonLista();
 }
 
 async function aplicarLista(){
@@ -1610,6 +1645,13 @@ async function aplicarLista(){
     for (const c of plan.stock){
       try { const fila = await api.update(c.p.id, { disponible: c.a }); Object.assign(c.p, fila); hechos++; }
       catch (e){ console.error(e); fallos++; }
+    }
+    const chk = $('#lpOcultar');
+    if (plan.discontinuados.length && (!chk || chk.checked)){
+      for (const p of plan.discontinuados){
+        try { const fila = await api.update(p.id, { activo: false }); Object.assign(p, fila); hechos++; }
+        catch (e){ console.error(e); fallos++; }
+      }
     }
     if (plan.nuevos.length){
       try { await api.insertMany(plan.nuevos); hechos += plan.nuevos.length; }
