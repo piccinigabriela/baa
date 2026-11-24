@@ -818,6 +818,11 @@ function demoData(){
 const CATS = Object.keys(CATEGORIAS);
 function ordenar(l){
   return [...l].sort((a, b) => {
+    if (S.editando){
+      // en edición, primero lo que está publicado
+      const oa = a.activo === false ? 1 : 0, ob = b.activo === false ? 1 : 0;
+      if (oa !== ob) return oa - ob;
+    }
     const ca = CATS.indexOf(a.categoria), cb = CATS.indexOf(b.categoria);
     if (ca !== cb) return ca - cb;
     const sa = (CATEGORIAS[a.categoria] || []).indexOf(a.subcategoria);
@@ -869,8 +874,6 @@ function filtrados(){
     if (f.extra === 'Ocultos') l = l.filter(p => p.activo === false);
     if (f.extra === 'Sin foto') l = l.filter(p => !urlOk(p.imagen_url));
     if (f.extra === 'Sin stock') l = l.filter(sinStock);
-    // en edición, primero lo que está publicado
-    l = l.slice().sort((a, b) => (a.activo === false) - (b.activo === false));
   }
   return l;
 }
