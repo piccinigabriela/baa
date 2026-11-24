@@ -865,9 +865,12 @@ function filtrados(){
   if (f.sub !== 'Todas') l = l.filter(p => p.subcategoria === f.sub);
   if (f.medida !== 'Todas') l = l.filter(p => p.medida === f.medida);
   if (S.editando){
+    if (f.extra === 'Publicados') l = l.filter(p => p.activo !== false);
     if (f.extra === 'Ocultos') l = l.filter(p => p.activo === false);
     if (f.extra === 'Sin foto') l = l.filter(p => !urlOk(p.imagen_url));
     if (f.extra === 'Sin stock') l = l.filter(sinStock);
+    // en edición, primero lo que está publicado
+    l = l.slice().sort((a, b) => (a.activo === false) - (b.activo === false));
   }
   return l;
 }
@@ -903,7 +906,8 @@ function renderSub(){
       chip('medida', 'Todas', 'Cualquier medida', f.medida === 'Todas') + meds.map(m => chip('medida', m, m, f.medida === m)).join('') + `</div>`;
   }
   if (S.editando){
-    const n = { Ocultos: S.productos.filter(p => p.activo === false).length,
+    const n = { Publicados: S.productos.filter(p => p.activo !== false).length,
+                Ocultos: S.productos.filter(p => p.activo === false).length,
                 'Sin foto': S.productos.filter(p => !urlOk(p.imagen_url)).length,
                 'Sin stock': S.productos.filter(sinStock).length };
     html += `<div class="chips" role="group" aria-label="Pendientes de revisar">` +
