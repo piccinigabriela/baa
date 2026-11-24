@@ -274,6 +274,8 @@ dialog.sheet[open]{display:flex;flex-direction:column;animation:subir .28s ease;
 .pm-info h2{margin:0;font-size:26px;line-height:1.2;font-weight:800;}
 .pm-price .price-main{font-size:30px;}
 .pm-price .price-sub{font-size:16px;}
+.pm-envio{display:flex;gap:9px;align-items:flex-start;margin:0;font-weight:700;font-size:15px;line-height:1.45;}
+.pm-envio svg{flex:none;width:21px;height:21px;margin-top:1px;}
 .pm-desc{margin:0;font-size:16px;line-height:1.7;white-space:pre-line;max-width:60ch;}
 .pm-cta{position:sticky;bottom:0;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line);}
 .pm-cta .btn{width:100%;}
@@ -446,6 +448,7 @@ dialog.ancho .csv-prev{max-height:min(52svh,520px);}
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></symbol>
   <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM8.5 12h7M8.5 16h5"/></symbol>
   <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></symbol>
   <symbol id="i-wa" viewBox="0 0 24 24"><path d="M12 2a10 10 0 00-8.6 15L2 22l5.2-1.4A10 10 0 1012 2zm0 18.2a8.2 8.2 0 01-4.2-1.2l-.3-.2-3.1.8.8-3-.2-.3a8.2 8.2 0 117 3.9zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.7.8-.8 1-.1.1-.3.2-.5.1-.2-.1-1-.4-2-1.2-.7-.7-1.2-1.5-1.4-1.7-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.3.2-.4.1-.2 0-.3 0-.4-.1-.1-.6-1.4-.8-1.9-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.2 1.6 2.4 3.8 3.4.5.2 1 .4 1.3.5.6.2 1.1.1 1.5.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.2-.2-.4-.3z"/></symbol>
@@ -657,7 +660,8 @@ const CFG = {
 };
 const TEXTOS = {
   linea: "Ropa de cama y baño",
-  promo: ["3 cuotas sin interés", "15% off pagando por transferencia"]
+  promo: ["3 cuotas sin interés", "15% off pagando por transferencia", "Envío gratis desde $ 100.000"],
+  envio: "Envío gratis desde $ 100.000. A domicilio en AMBA, a sucursal del Correo Argentino en el interior."
 };
 const CATEGORIAS = {
   "Ropa de cama": ["Sábanas","Frazadas","Fundas nórdicas","Acolchados","Cubrecamas","Accesorios"],
@@ -1039,6 +1043,7 @@ function renderModal(){
       <div class="pm-price">${precioHtml(precio, false)}</div>
       ${sinStock(p) ? `<p style="margin:0;font-weight:800;">Sin stock por ahora.</p>` : ''}
       ${p.descripcion ? `<p class="pm-desc">${esc(p.descripcion)}</p>` : ''}
+      <p class="pm-envio">${ico('truck')} ${esc(S.ajustes.envio || TEXTOS.envio)}</p>
     </div>
     <div class="pm-cta"><a class="btn" href="${waProducto(p)}" target="_blank" rel="noopener">${ico('wa', 'f')} ${sinStock(p) ? 'Avisame cuando haya stock' : 'Consultar por WhatsApp'}</a></div>
   </div>`;
@@ -1894,7 +1899,8 @@ function bind(){
 }
 async function init(){
   $('#heroLinea').textContent = TEXTOS.linea;
-  $('#heroPromo').innerHTML = TEXTOS.promo.map(esc).join('<br>');
+  const promo = Array.isArray(S.ajustes.promo) ? S.ajustes.promo : TEXTOS.promo;
+  $('#heroPromo').innerHTML = promo.map(esc).join('<br>');
   $('#footWa').href = $('#waFloat').href = waUrl('Hola! Quería hacer una consulta.');
   llenarSelectsEditor();
   bind();
