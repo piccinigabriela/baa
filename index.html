@@ -1352,7 +1352,8 @@ function leerCSV(texto){
   const cab = filas[0].map(norm);
   const col = (...ns) => { for (const n of ns){ const i = cab.indexOf(n); if (i >= 0) return i; } return -1; };
   const ix = { n: col('nombre','name'), c: col('categoria','category'), s: col('subcategoria','subcategory'), m: col('medida','size'),
-               pv: col('proveedor','supplier'), d: col('descripcion','description'), p: col('precio','price'), co: col('costo','precio_costo') };
+               pv: col('proveedor','supplier'), d: col('descripcion','description'), p: col('precio','price'), co: col('costo','precio_costo'),
+               cod: col('codigo','articulo','codigo de barras'), cf: col('codigo_foto','foto','numero de foto') };
   const errores = [];
   filas.slice(1).forEach((f, k) => {
     const v = i => i >= 0 ? (f[i] || '').trim() : '';
@@ -1365,7 +1366,8 @@ function leerCSV(texto){
     else if (v(ix.p) !== '' && isNaN(Number(v(ix.p)))) err = 'el precio no es un número';
     if (err){ errores.push(`Fila ${k + 2}: ${err}`); return; }
     CSV.filas.push({ nombre, categoria: cat, subcategoria: sub, medida: med || null, proveedor: v(ix.pv) || null, descripcion: v(ix.d) || null,
-      precio: v(ix.p) === '' ? null : Number(v(ix.p)), precio_costo: v(ix.co) === '' ? null : Number(v(ix.co)), disponible: true, activo: false });
+      precio: v(ix.p) === '' ? null : Number(v(ix.p)), precio_costo: v(ix.co) === '' ? null : Number(v(ix.co)),
+      codigo: v(ix.cod) || null, codigo_foto: v(ix.cf) || null, disponible: true, activo: false });
   });
   prev.hidden = false;
   prev.innerHTML = `<strong>${CSV.filas.length} ${CSV.filas.length === 1 ? 'producto listo' : 'productos listos'} para importar.</strong>` +
@@ -1384,9 +1386,9 @@ async function confirmarImport(){
   } catch (e) { falla(e, 'No se pudo importar. Revisá el archivo.'); btn.disabled = false; btn.textContent = `Importar ${CSV.filas.length}`; }
 }
 function descargarPlantilla(){
-  const csv = 'nombre,categoria,subcategoria,medida,descripcion,precio,costo,proveedor\n' +
-    'Sábana Queen 200 hilos,Ropa de cama,Sábanas,Queen,"Algodón percal, blanca",93125,60000,Nuvia\n' +
-    'Juego de toallas 500 gr,Baño,Juegos de toallas,,,29700,18000,Levitex\n';
+  const csv = 'nombre,categoria,subcategoria,medida,descripcion,precio,costo,proveedor,codigo,codigo_foto\n' +
+    'Sábana Queen 200 hilos,Ropa de cama,Sábanas,Queen,"Algodón percal, blanca",93125,60000,Nuvia,10010,10001\n' +
+    'Juego de toallas 500 gr,Baño,Juegos de toallas,,,29700,18000,Levitex,,\n';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   a.download = 'plantilla_baa.csv'; a.click();
@@ -1679,15 +1681,27 @@ async function aplicarLista(){
 const FN = { grupos: null, corriendo: false, parar: false };
 function analizarFotos(files){
   const prev = $('#fnPrev'), btn = $('#fnConfirmar');
-  const porCodigo = new Map();
-  S.productos.forEach(p => { if (p.codigo_foto) { const k = String(p.codigo_foto).trim();
-    if (!porCodigo.has(k)) porCodigo.set(k, []); porCodigo.get(k).push(p); } });
+  const porCodigo = new Map(), porArticulo = new Map();
+  S.productos.forEach(p => {
+    if (p.codigo_foto){ const k = String(p.codigo_foto).trim();
+      if (!porCodigo.has(k)) porCodigo.set(k, []); porCodigo.get(k).push(p); }
+    if (p.codigo) porArticulo.set(String(p.codigo).trim(), p);
+  });
+  // cualquier artículo del grupo sirve: 30002 lleva a la foto del grupo, que es 30001
+  const grupoDe = n => {
+    if (porCodigo.has(n)) return n;
+    const p = porArticulo.get(n);
+    const g = p && p.codigo_foto ? String(p.codigo_foto).trim() : null;
+    return g && porCodigo.has(g) ? g : null;
+  };
   const grupos = new Map(); let sueltas = 0;
   [...files].forEach(f => {
-    const m = f.name.match(/(\d{3,5})/);
-    const k = m && porCodigo.has(m[1]) ? m[1] : null;
+    const m = f.name.match(/(\d{3,7})/);
+    const k = m ? grupoDe(m[1]) : null;
     if (!k){ sueltas++; return; }
-    const extra = /detalle|casa|amb|ambient|2|3/i.test(f.name.replace(/^\s*\d{3,5}/, ''));
+    // portada = el archivo que es solo el número. Cualquier cosa agregada lo marca como extra:
+    // "1066 detalle.jpg", "50009.1.jpeg", "20004(1).jpg"
+    const extra = f.name.replace(/\.[a-z0-9]+$/i, '').replace(/^\s*\d{3,5}/, '').trim() !== '';
     if (!grupos.has(k)) grupos.set(k, { portada: null, extras: [] });
     const g = grupos.get(k);
     if (!extra && !g.portada) g.portada = f; else g.extras.push(f);
