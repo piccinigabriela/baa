@@ -703,7 +703,7 @@ const S = {
   mostrarPrecios: CFG.MOSTRAR_PRECIOS,
   ajustes: {},
   proveedorLista: 'Jean Cartier',
-  filtro: { cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos' }
+  filtro: { cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos', prov:'Todos' }
 };
 let sb = null;
 let api = null;
@@ -870,6 +870,11 @@ function filtrados(){
   if (f.sub !== 'Todas') l = l.filter(p => p.subcategoria === f.sub);
   if (f.medida !== 'Todas') l = l.filter(p => p.medida === f.medida);
   if (S.editando){
+    if (f.prov && f.prov !== 'Todos'){
+      l = f.prov === '(sin proveedor)'
+        ? l.filter(p => !String(p.proveedor || '').trim())
+        : l.filter(p => String(p.proveedor || '').trim() === f.prov);
+    }
     if (f.extra === 'Publicados') l = l.filter(p => p.activo !== false);
     if (f.extra === 'Ocultos') l = l.filter(p => p.activo === false);
     if (f.extra === 'Sin foto') l = l.filter(p => !urlOk(p.imagen_url));
@@ -882,7 +887,7 @@ function filtrados(){
 function renderNav(){
   const vis = visibles();
   const cats = CATS.filter(c => vis.some(p => p.categoria === c));
-  if (S.filtro.cat !== 'Todo' && !cats.includes(S.filtro.cat)) S.filtro = { cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos' };
+  if (S.filtro.cat !== 'Todo' && !cats.includes(S.filtro.cat)) S.filtro = { ...S.filtro, cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos' };
   const items = ['Todo', ...cats];
   $('#pills').innerHTML = items.map(c =>
     `<button type="button" class="pill" data-act="cat" data-v="${esc(c)}" aria-pressed="${S.filtro.cat === c}">${esc(c)}</button>`).join('');
@@ -913,6 +918,14 @@ function renderSub(){
                 Ocultos: S.productos.filter(p => p.activo === false).length,
                 'Sin foto': S.productos.filter(p => !urlOk(p.imagen_url)).length,
                 'Sin stock': S.productos.filter(sinStock).length };
+    const provs = {};
+    S.productos.forEach(p => { const k = String(p.proveedor || '').trim() || '(sin proveedor)'; provs[k] = (provs[k] || 0) + 1; });
+    const lista = Object.keys(provs).sort((a, b) => provs[b] - provs[a]);
+    if (lista.length > 1){
+      html += `<div class="chips" role="group" aria-label="Proveedor">` +
+        chip('prov', 'Todos', 'Todos los proveedores', f.prov === 'Todos', 'alt') +
+        lista.map(k => chip('prov', k, `${k} (${provs[k]})`, f.prov === k, 'alt')).join('') + `</div>`;
+    }
     html += `<div class="chips" role="group" aria-label="Pendientes de revisar">` +
       chip('extra', 'Todos', 'Ver todos', f.extra === 'Todos', 'alt') +
       Object.keys(n).map(k => chip('extra', k, `${k} (${n[k]})`, f.extra === k, 'alt')).join('') + `</div>`;
@@ -1320,7 +1333,7 @@ async function salir(){
   try { await api.logout(); } catch (e) { console.error(e); }
   S.sesion = null; S.editando = false;
   try { if (!S.demo) S.productos = await apiReal.list(false); } catch (e) { console.error(e); }
-  S.filtro = { cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos' };
+  S.filtro = { ...S.filtro, cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos' };
   renderTodo();
   toast('Cerraste la sesión.');
 }
@@ -1755,10 +1768,11 @@ async function subirFotosNumeradas(){
 }
 
 const A = {
-  cat(t){ S.filtro = { cat: t.dataset.v, sub: 'Todas', medida: 'Todas', extra: 'Todos' }; renderTodo(); scrollACatalogo(); },
+  cat(t){ S.filtro = { ...S.filtro, cat: t.dataset.v, sub: 'Todas', medida: 'Todas', extra: 'Todos' }; renderTodo(); scrollACatalogo(); },
   sub(t){ S.filtro.sub = t.dataset.v; S.filtro.medida = 'Todas'; renderSub(); renderGrid(); },
   medida(t){ S.filtro.medida = t.dataset.v; renderSub(); renderGrid(); },
   extra(t){ S.filtro.extra = t.dataset.v; renderSub(); renderGrid(); },
+  prov(t){ S.filtro.prov = t.dataset.v; renderNav(); renderSub(); renderGrid(); },
   abrir(t){ abrirProducto(t.dataset.id); },
   'medida-modal'(t){ M.i = Number(t.dataset.i); renderModal(); try { history.replaceState(null, '', '#producto=' + encodeURIComponent(M.g.items[M.i].id)); } catch (e) {} },
   gal(t){ const tr = $('#galTrack'); if (tr) tr.scrollBy({ left: Number(t.dataset.d) * tr.clientWidth, behavior: 'smooth' }); },
