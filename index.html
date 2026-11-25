@@ -206,6 +206,10 @@ a{color:inherit;}
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   background:none;border:0;padding:0;text-align:left;font-weight:700;font-size:16px;line-height:1.3;
 }
+.tono{display:inline-block;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--edge);vertical-align:-2px;}
+.tonos{display:inline-flex;gap:5px;align-items:center;margin-right:4px;}
+.tonos .tono{width:16px;height:16px;}
+.size-pick .tono{margin-right:7px;width:13px;height:13px;}
 .sizes{display:flex;flex-wrap:wrap;gap:6px;}
 .size-tag{padding:2px 10px;border:1.5px solid var(--edge);border-radius:999px;font-size:13px;font-weight:600;}
 .price{display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums;}
@@ -669,7 +673,7 @@ const CATEGORIAS = {
 };
 const MEDIDAS = ["One","Twin","Dos Plazas","Queen","King","Super King"];
 /* La tienda pública pide solo estas columnas: costo y proveedor nunca viajan al cliente. */
-const PUBLIC_COLS = "id,nombre,descripcion,categoria,subcategoria,precio,imagen_url,imagenes_extra,disponible,activo,orden,medida";
+const PUBLIC_COLS = "id,nombre,descripcion,categoria,subcategoria,precio,imagen_url,imagenes_extra,disponible,activo,orden,medida,color,modelo";
 
 const ES_PROD = /(^|\.)baacasa\.com\.ar$/.test(location.hostname);
 const FORCE_DEMO = new URLSearchParams(location.search).has('demo');
@@ -841,22 +845,28 @@ function agrupar(lista){
   if (!CFG.AGRUPAR_MEDIDAS) return lista.map(p => ({ key: p.id, items: [p] }));
   const mapa = new Map(), orden = [];
   for (const p of lista){
-    if (!p.medida){ orden.push({ items: [p] }); continue; }
-    const k = p.subcategoria + '|' + baseNombre(p.nombre);
+    // con modelo cargado agrupa color y medida juntos; si no, solo las medidas
+    const k = p.modelo ? 'm|' + p.subcategoria + '|' + p.modelo
+            : (p.medida ? 's|' + p.subcategoria + '|' + baseNombre(p.nombre) : null);
+    if (!k){ orden.push({ items: [p] }); continue; }
     let g = mapa.get(k);
-    if (!g){ g = { items: [] }; mapa.set(k, g); orden.push(g); }
+    if (!g){ g = { items: [], porModelo: !!p.modelo }; mapa.set(k, g); orden.push(g); }
     g.items.push(p);
   }
   const res = [];
   for (const g of orden){
-    const ms = g.items.map(i => i.medida);
-    if (g.items.length > 1 && new Set(ms).size !== ms.length){
-      g.items.forEach(i => res.push({ key: i.id, items: [i] }));
-    } else {
-      g.items.sort((a, b) => MEDIDAS.indexOf(a.medida) - MEDIDAS.indexOf(b.medida));
-      g.key = g.items.length > 1 ? 'g-' + g.items[0].id : g.items[0].id;
-      res.push(g);
+    if (!g.porModelo){
+      const ms = g.items.map(i => i.medida);
+      if (g.items.length > 1 && new Set(ms).size !== ms.length){
+        g.items.forEach(i => res.push({ key: i.id, items: [i] }));
+        continue;
+      }
     }
+    g.items.sort((a, b) =>
+      String(a.color || '').localeCompare(String(b.color || ''), 'es') ||
+      MEDIDAS.indexOf(a.medida) - MEDIDAS.indexOf(b.medida));
+    g.key = g.items.length > 1 ? 'g-' + g.items[0].id : g.items[0].id;
+    res.push(g);
   }
   return res;
 }
@@ -949,15 +959,34 @@ function imgHtml(p, cls = ''){
   return u ? `<img src="${esc(u)}" alt="" loading="lazy" decoding="async">`
            : `<span class="vacio">${ico('image')}</span>`;
 }
+const TONOS = {
+  'blanco':'#f7f5f1', 'blanco lavado':'#efebe3', 'blanco con costura':'#f7f5f1', 'blanco sin costura':'#f7f5f1',
+  'crudo':'#eee7da', 'beige':'#ddcfb6', 'arena':'#cab594', 'camel':'#bb9a6e', 'tostado':'#a87f55',
+  'rosa':'#e8b4ad', 'coral':'#e59081', 'menta':'#bad7c7', 'verde':'#a8bb99', 'verde oliva':'#97a07c',
+  'celeste':'#b7ceda', 'azul':'#7e92ac', 'denim':'#5f7490', 'gris':'#b7b7b2', 'gris claro':'#d2d2cd',
+  'negro':'#2a2a2a', 'marron':'#8a6a4f', 'bordo':'#7d3a40', 'amarillo':'#e8cf8d', 'naranja':'#e0a070'
+};
+const tono = c => TONOS[sinAc(c)] || null;
+const puntoColor = c => { const t = tono(c); return t ? `<i class="tono" style="background:${t}"></i>` : ''; };
+const coloresDe = g => [...new Set(g.items.map(p => p.color).filter(Boolean))];
+const medidasDe = g => [...new Set(g.items.map(p => p.medida).filter(Boolean))]
+  .sort((a, b) => MEDIDAS.indexOf(a) - MEDIDAS.indexOf(b));
+const tituloDe = g => g.items[0].modelo || (g.items.length > 1 ? nombreGrupo(g.items[0].nombre) : g.items[0].nombre);
+
 function cardPublica(g){
   const ps = g.items, p0 = ps.find(p => urlOk(p.imagen_url)) || ps[0];
   const multi = ps.length > 1;
-  const nombre = multi ? nombreGrupo(ps[0].nombre) : ps[0].nombre;
+  const nombre = tituloDe(g);
   const precios = ps.filter(tienePrecio).map(p => Number(p.precio));
   const min = precios.length ? Math.min(...precios) : null;
   const desde = precios.length > 1 && Math.max(...precios) !== min;
   const agotado = ps.every(sinStock);
-  const tallas = ps.filter(p => p.medida).map(p => `<span class="size-tag">${esc(p.medida)}</span>`).join('');
+  const cols = coloresDe(g), meds = medidasDe(g);
+  const puntos = cols.length > 1 && cols.every(tono)
+    ? `<span class="tonos" aria-label="Colores: ${esc(cols.join(', '))}">${cols.map(puntoColor).join('')}</span>`
+    : cols.slice(0, 4).map(c => `<span class="size-tag">${puntoColor(c)}${esc(c)}</span>`).join('') +
+      (cols.length > 4 ? `<span class="size-tag">+${cols.length - 4}</span>` : '');
+  const tallas = (cols.length > 1 ? puntos : '') + meds.map(v => `<span class="size-tag">${esc(v)}</span>`).join('');
   const id = esc(ps[0].id);
   return `<article class="card ${agotado ? 'out' : ''}">
     <div class="card-media">
@@ -1043,7 +1072,7 @@ function abrirProducto(id){
 }
 function renderModal(){
   const g = M.g, p = g.items[M.i], fotos = fotosDe(p), multi = g.items.length > 1;
-  const nombre = multi ? nombreGrupo(p.nombre) : p.nombre;
+  const nombre = tituloDe(g);
   const slides = fotos.length
     ? fotos.map((u, i) => `<div class="slide"><img src="${esc(u)}" alt="${esc(p.nombre)}${fotos.length > 1 ? ', foto ' + (i + 1) : ''}" ${i ? 'loading="lazy"' : ''} decoding="async"></div>`).join('')
     : `<div class="slide" style="display:grid;place-items:center;">${ico('image')}</div>`;
@@ -1051,14 +1080,23 @@ function renderModal(){
     ? `<button type="button" class="gal-arrow l" data-act="gal" data-d="-1" aria-label="Foto anterior">${ico('left')}</button>
        <button type="button" class="gal-arrow r" data-act="gal" data-d="1" aria-label="Foto siguiente">${ico('right')}</button>
        <div class="gal-dots" id="galDots" aria-hidden="true">${fotos.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : '';
-  const tallas = multi
-    ? `<div class="size-pick" role="group" aria-label="Medida">${g.items.map((it, i) =>
-        `<button type="button" data-act="medida-modal" data-i="${i}" aria-pressed="${i === M.i}" class="${sinStock(it) ? 'sin' : ''}">${esc(it.medida)}</button>`).join('')}</div>` : '';
+  const cols = coloresDe(g);
+  const colorAct = p.color || '';
+  const colores = cols.length > 1
+    ? `<div class="size-pick" role="group" aria-label="Color">${cols.map(c => {
+        const hay = g.items.some(it => it.color === c && !sinStock(it));
+        return `<button type="button" data-act="color-modal" data-v="${esc(c)}" aria-pressed="${c === colorAct}" class="${hay ? '' : 'sin'}">${puntoColor(c)}${esc(c)}</button>`;
+      }).join('')}</div>` : '';
+  const delColor = g.items.filter(it => (it.color || '') === colorAct && it.medida);
+  const tallas = delColor.length > 1
+    ? `<div class="size-pick" role="group" aria-label="Medida">${delColor.map(it =>
+        `<button type="button" data-act="medida-modal" data-i="${g.items.indexOf(it)}" aria-pressed="${it.id === p.id}" class="${sinStock(it) ? 'sin' : ''}">${esc(it.medida)}</button>`).join('')}</div>` : '';
   const precio = tienePrecio(p) ? Number(p.precio) : null;
   $('#pmBody').innerHTML = `<div class="pm">
     <div class="gal"><div class="gal-track" id="galTrack" tabindex="0" aria-label="Fotos del producto">${slides}</div>${controles}</div>
     <div class="pm-info">
       <h2 id="pmTitulo">${esc(nombre)}</h2>
+      ${colores}
       ${tallas}
       <div class="pm-price">${precioHtml(precio, false)}</div>
       ${sinStock(p) ? `<p style="margin:0;font-weight:800;">Sin stock por ahora.</p>` : ''}
@@ -1775,6 +1813,16 @@ const A = {
   prov(t){ S.filtro.prov = t.dataset.v; renderNav(); renderSub(); renderGrid(); },
   abrir(t){ abrirProducto(t.dataset.id); },
   'medida-modal'(t){ M.i = Number(t.dataset.i); renderModal(); try { history.replaceState(null, '', '#producto=' + encodeURIComponent(M.g.items[M.i].id)); } catch (e) {} },
+  'color-modal'(t){
+    const c = t.dataset.v, med = M.g.items[M.i].medida;
+    // al cambiar de color mantiene la medida elegida si ese color la tiene
+    let i = M.g.items.findIndex(it => it.color === c && it.medida === med);
+    if (i < 0) i = M.g.items.findIndex(it => it.color === c && !sinStock(it));
+    if (i < 0) i = M.g.items.findIndex(it => it.color === c);
+    if (i < 0) return;
+    M.i = i; renderModal();
+    try { history.replaceState(null, '', '#producto=' + encodeURIComponent(M.g.items[i].id)); } catch (e) {}
+  },
   gal(t){ const tr = $('#galTrack'); if (tr) tr.scrollBy({ left: Number(t.dataset.d) * tr.clientWidth, behavior: 'smooth' }); },
   cerrar(t){ const d = t.closest('dialog'); if (d) d.close(); },
   ingresar(){ abrirLogin(); },
