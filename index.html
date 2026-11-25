@@ -864,7 +864,7 @@ function agrupar(lista){
     }
     g.items.sort((a, b) =>
       String(a.color || '').localeCompare(String(b.color || ''), 'es') ||
-      MEDIDAS.indexOf(a.medida) - MEDIDAS.indexOf(b.medida));
+      ordenMedida(a.medida) - ordenMedida(b.medida));
     g.key = g.items.length > 1 ? 'g-' + g.items[0].id : g.items[0].id;
     res.push(g);
   }
@@ -968,9 +968,16 @@ const TONOS = {
 };
 const tono = c => TONOS[sinAc(c)] || null;
 const puntoColor = c => { const t = tono(c); return t ? `<i class="tono" style="background:${t}"></i>` : ''; };
+// las medidas conocidas van en su orden; las que no (40 x 70 cm) por su número
+const ordenMedida = m => {
+  const i = MEDIDAS.indexOf(m);
+  if (i >= 0) return i;
+  const n = parseInt(String(m || '').replace(/\D/g, '').slice(0, 4), 10);
+  return 100 + (isFinite(n) ? n : 9999);
+};
 const coloresDe = g => [...new Set(g.items.map(p => p.color).filter(Boolean))];
 const medidasDe = g => [...new Set(g.items.map(p => p.medida).filter(Boolean))]
-  .sort((a, b) => MEDIDAS.indexOf(a) - MEDIDAS.indexOf(b));
+  .sort((a, b) => ordenMedida(a) - ordenMedida(b));
 const tituloDe = g => g.items[0].modelo || (g.items.length > 1 ? nombreGrupo(g.items[0].nombre) : g.items[0].nombre);
 
 function cardPublica(g){
