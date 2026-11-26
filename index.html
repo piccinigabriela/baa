@@ -827,6 +827,9 @@ function ordenar(l){
       const oa = a.activo === false ? 1 : 0, ob = b.activo === false ? 1 : 0;
       if (oa !== ob) return oa - ob;
     }
+    // lo que no tiene stock va al final de todo
+    const ka = sinStock(a) ? 1 : 0, kb = sinStock(b) ? 1 : 0;
+    if (ka !== kb) return ka - kb;
     const ca = CATS.indexOf(a.categoria), cb = CATS.indexOf(b.categoria);
     if (ca !== cb) return ca - cb;
     const sa = (CATEGORIAS[a.categoria] || []).indexOf(a.subcategoria);
