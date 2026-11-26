@@ -408,6 +408,12 @@ dialog.modal p{margin:0 0 16px;line-height:1.6;}
 .modal-actions .btn{flex:1;}
 .progreso{height:12px;border-radius:999px;background:var(--bg-2);overflow:hidden;margin:14px 0 8px;}
 .progreso i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease;}
+.campo-prov{display:block;font-weight:700;margin:0 0 14px;}
+.campo-prov input{
+  display:block;width:100%;margin-top:6px;padding:11px 13px;font:inherit;font-weight:500;
+  color:var(--ink);background:var(--bg);border:1.5px solid var(--edge);border-radius:12px;
+}
+.campo-prov input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 .csv-prev{max-height:220px;overflow:auto;border:1.5px solid var(--edge);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6;}
 dialog.ancho .csv-prev{max-height:min(52svh,520px);}
 .csv-prev .err{color:var(--danger);font-weight:700;}
@@ -585,6 +591,10 @@ dialog.ancho .csv-prev{max-height:min(52svh,520px);}
 <dialog id="dlgLista" class="modal ancho" aria-labelledby="lpTitulo">
   <h2 id="lpTitulo">Actualizar desde lista del proveedor</h2>
   <p id="lpAyuda">Arrastrá la planilla que te mandó el proveedor. Te muestro qué cambia antes de tocar nada.</p>
+  <label class="campo-prov">Proveedor de esta lista
+    <input id="lpProveedor" list="lpProveedores" autocomplete="off" placeholder="Jean Cartier">
+    <datalist id="lpProveedores"></datalist>
+  </label>
   <input type="file" id="lpArchivo" accept=".xlsx,.xls">
   <div class="csv-prev" id="lpPrev" hidden></div>
   <div class="modal-actions">
@@ -669,7 +679,8 @@ const TEXTOS = {
 };
 const CATEGORIAS = {
   "Ropa de cama": ["Sábanas","Frazadas","Fundas nórdicas","Acolchados","Cubrecamas","Accesorios"],
-  "Baño": ["Juegos de toallas","Alfombritas","Cortinas de baño"]
+  "Baño": ["Juegos de toallas","Alfombritas","Cortinas de baño"],
+  "Mesa": ["Manteles","Repasadores"]
 };
 const MEDIDAS = ["One","Twin","Dos Plazas","Queen","King","Super King"];
 /* La tienda pública pide solo estas columnas: costo y proveedor nunca viajan al cliente. */
@@ -1522,11 +1533,15 @@ const RUBROS = {
   'set funda de almohada':['Ropa de cama','Accesorios'], 'relleno de almohadon':['Ropa de cama','Accesorios'],
   'almohada':['Ropa de cama','Accesorios'], 'almohadon':['Ropa de cama','Accesorios'], 'pillow':['Ropa de cama','Accesorios'],
   'cubresommier':['Ropa de cama','Accesorios'], 'funda de colchon':['Ropa de cama','Accesorios'],
+  'cubrecolchon':['Ropa de cama','Accesorios'],
   'protector de colchon':['Ropa de cama','Accesorios'], 'relleno':['Ropa de cama','Accesorios'],
   'toallon':['Baño','Juegos de toallas'], 'toalla':['Baño','Juegos de toallas'], 'toallita':['Baño','Juegos de toallas'],
   'juego de toallas':['Baño','Juegos de toallas'], 'juego de toalla y toallon':['Baño','Juegos de toallas'],
   'set de bano':['Baño','Juegos de toallas'],
-  'alfombra de bano':['Baño','Alfombritas'], 'cortina de bano':['Baño','Cortinas de baño']
+  'alfombra de bano':['Baño','Alfombritas'], 'cortina de bano':['Baño','Cortinas de baño'],
+  'mantel':['Mesa','Manteles'], 'manteles':['Mesa','Manteles'], 'camino de mesa':['Mesa','Manteles'],
+  'repasador':['Mesa','Repasadores'], 'repasadores':['Mesa','Repasadores'],
+  'set de repasadores':['Mesa','Repasadores'], 'individual':['Mesa','Manteles']
 };
 const MED_PROV = {
   '1 plaza':'Twin', 'twin':'Twin', '1 1/2 plaza':'One', '1 1/2 plazas':'One', 'one':'One',
@@ -1536,8 +1551,14 @@ const MED_PROV = {
 const sinAc = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 function tituloCase(s){
   const chicas = new Set(['de','del','la','el','y','con','a','en','por']);
+  const tal = new Set(['cm','cm.','x','gsm','grs','grs.','gr','ml']);
+  const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
   return String(s || '').trim().toLowerCase().split(/\s+/)
-    .map((p, i) => (i && chicas.has(p)) ? p : p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    .map((p, i) => {
+      if (tal.has(p)) return p;                 // medidas y unidades quedan como están
+      if (i && chicas.has(p)) return p;
+      return p.split('/').map(cap).join('/');   // "beige/tormenta" -> "Beige/Tormenta"
+    }).join(' ');
 }
 let XLSXlisto = null;
 function cargarXLSX(){
@@ -1667,7 +1688,7 @@ function pintarPlanLista(plan){
     <span>productos nuevos<b>${plan.nuevos.length}</b></span>
     <span>ya no los trae<b>${plan.discontinuados.length}</b></span>
     <span>sin cambios<b>${plan.igual}</b></span></div>`;
-  if (plan.fueraDeCat) h += `<p>Dejé afuera ${plan.fueraDeCat} filas de rubros que no están en tus categorías (batas, manteles, repasadores y parecidos).</p>`;
+  if (plan.fueraDeCat) h += `<p>Dejé afuera ${plan.fueraDeCat} filas de rubros que no están en tus categorías (batas, ropa y parecidos).</p>`;
   if (plan.precio.length){
     h += `<h3>Precios (multiplicás el costo por ${String(plan.margen).replace(".", ",")})</h3><table class="tabla-cambios"><tr><th>Producto</th><th>Costo</th><th>Precio en 3 cuotas</th></tr>`;
     plan.precio.slice(0, 12).forEach(c => {
@@ -1861,6 +1882,9 @@ const A = {
     $('#menu').hidden = true;
     $('#lpArchivo').value = ''; $('#lpPrev').hidden = true;
     $('#lpConfirmar').disabled = true; $('#lpConfirmar').textContent = 'Aplicar cambios';
+    const provs = [...new Set(S.productos.map(p => String(p.proveedor || '').trim()).filter(Boolean))].sort();
+    $('#lpProveedores').innerHTML = provs.map(p => `<option value="${esc(p)}">`).join('');
+    $('#lpProveedor').value = S.proveedorLista || '';
     LP.filas = []; LP.plan = null; $('#dlgLista').showModal();
   },
   'lp-confirmar'(){ aplicarLista(); },
@@ -1972,6 +1996,10 @@ function bind(){
   $('#imArchivo').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader(); r.onload = () => leerCSV(String(r.result)); r.readAsText(f, 'UTF-8');
+  });
+  $('#lpProveedor').addEventListener('input', e => {
+    S.proveedorLista = e.target.value.trim();
+    if (LP.filas && LP.filas.length){ LP.plan = planDeActualizacion(LP.filas); pintarPlanLista(LP.plan); }
   });
   $('#lpArchivo').addEventListener('change', async e => {
     const f = e.target.files[0]; if (!f) return;
