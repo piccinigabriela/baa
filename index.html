@@ -414,6 +414,12 @@ dialog.modal p{margin:0 0 16px;line-height:1.6;}
   color:var(--ink);background:var(--bg);border:1.5px solid var(--edge);border-radius:12px;
 }
 .campo-prov input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.fm-alt{margin:-6px 0 14px;font-size:14px;}
+.fm-sel{
+  width:100%;max-width:340px;padding:7px 9px;font:inherit;font-size:14px;
+  color:var(--ink);background:var(--bg);border:1.5px solid var(--edge);border-radius:10px;
+}
+.fm-sel:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 .csv-prev{max-height:220px;overflow:auto;border:1.5px solid var(--edge);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.6;}
 dialog.ancho .csv-prev{max-height:min(52svh,520px);}
 .csv-prev .err{color:var(--danger);font-weight:700;}
@@ -516,6 +522,7 @@ dialog.ancho .csv-prev{max-height:min(52svh,520px);}
   <button type="button" id="btnPrecios" data-act="precios">Mostrar precios al público</button>
   <button type="button" data-act="lista-proveedor">Actualizar desde lista del proveedor</button>
   <button type="button" data-act="fotos-numeradas">Subir fotos por número</button>
+  <button type="button" data-act="fotos-modelo">Subir fotos por modelo</button>
   <button type="button" data-act="importar">Importar productos desde CSV</button>
   <button type="button" data-act="achicar-fotos">Achicar las fotos</button>
   <button type="button" data-act="salir">Cerrar sesión</button>
@@ -600,6 +607,22 @@ dialog.ancho .csv-prev{max-height:min(52svh,520px);}
   <div class="modal-actions">
     <button class="btn" type="button" id="lpConfirmar" data-act="lp-confirmar" disabled>Aplicar cambios</button>
     <button class="btn sec" type="button" data-act="cerrar">Cerrar</button>
+  </div>
+</dialog>
+
+<!-- Subir fotos por modelo (carpetas) -->
+<dialog id="dlgFotosMod" class="modal ancho" aria-labelledby="fmTitulo">
+  <h2 id="fmTitulo">Subir fotos por modelo</h2>
+  <p>Elegí la carpeta donde tenés las fotos. Si adentro hay una carpeta por modelo, las reparto solas. Cada foto va a todas las medidas de ese modelo: la primera de portada y el resto como fotos extra.</p>
+  <input type="file" id="fmArchivos" accept="image/*" multiple webkitdirectory directory>
+  <p class="fm-alt">¿No te deja elegir carpeta? <button type="button" class="linkbtn" data-act="fm-sueltas">Elegir fotos sueltas</button> y las asignás a un modelo.</p>
+  <input type="file" id="fmSueltas" accept="image/*" multiple hidden>
+  <div class="csv-prev" id="fmPrev" hidden></div>
+  <div class="progreso" aria-hidden="true"><i id="fmBarra"></i></div>
+  <p id="fmEstado" aria-live="polite" style="margin:0;font-weight:700;"></p>
+  <div class="modal-actions">
+    <button class="btn" type="button" id="fmConfirmar" data-act="fm-confirmar" disabled>Subir</button>
+    <button class="btn sec" type="button" data-act="fm-cerrar">Cerrar</button>
   </div>
 </dialog>
 
@@ -1843,6 +1866,128 @@ async function subirFotosNumeradas(){
   toast(fallos ? `Subí las fotos, ${fallos} fallaron.` : 'Fotos subidas.', fallos ? 'mal' : '');
 }
 
+/* ---------------- fotos por modelo (carpetas) ---------------- */
+const FM = { carpetas: null, modelos: null, corriendo: false, parar: false };
+
+/* Los modelos son los mismos grupos que la tienda muestra como una sola ficha. */
+function modelosParaFotos(){
+  return agrupar(S.productos)
+    .map(g => ({ key: g.key, titulo: tituloDe(g), sub: g.items[0].subcategoria || '', items: g.items }))
+    .sort((a, b) => a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' }));
+}
+
+const VACIAS = new Set(['de','del','la','el','los','las','y','con','en','por','a','juego','jgo','set','pack','cm','x','fotos','foto']);
+const palabras = s => sinAc(s).replace(/[^a-z0-9ñ ]+/g, ' ').split(/\s+/).filter(w => w && !VACIAS.has(w));
+
+function mejorModelo(nombreCarpeta, modelos){
+  const t = palabras(nombreCarpeta);
+  if (!t.length) return null;
+  let mejor = null, puntaje = 0;
+  for (const g of modelos){
+    const u = palabras(g.titulo + ' ' + g.sub);
+    if (!u.length) continue;
+    const comunes = t.filter(w => u.includes(w)).length;
+    if (!comunes) continue;
+    const p = (comunes / t.length) * 0.6 + (comunes / u.length) * 0.4;
+    if (p > puntaje){ puntaje = p; mejor = g; }
+  }
+  return puntaje >= 0.45 ? mejor : null;
+}
+
+function analizarCarpetas(files){
+  const prev = $('#fmPrev');
+  const modelos = FM.modelos = modelosParaFotos();
+  const porCarpeta = new Map();
+  [...files].forEach(f => {
+    const rel = f.webkitRelativePath || '';
+    const partes = rel.split('/').filter(Boolean);
+    const nombre = partes.length > 1 ? partes[partes.length - 2] : (partes[0] || 'Fotos elegidas');
+    if (!porCarpeta.has(nombre)) porCarpeta.set(nombre, []);
+    porCarpeta.get(nombre).push(f);
+  });
+  const carpetas = [...porCarpeta.entries()].map(([nombre, fotos], i) => ({
+    id: 'c' + i, nombre,
+    fotos: fotos.sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true })),
+    modelo: mejorModelo(nombre, modelos)
+  }));
+  FM.carpetas = carpetas;
+  pintarCarpetas();
+}
+
+function pintarCarpetas(){
+  const prev = $('#fmPrev'), carpetas = FM.carpetas || [], modelos = FM.modelos || [];
+  const opciones = `<option value="">— no subir —</option>` +
+    modelos.map(g => `<option value="${esc(g.key)}">${esc(g.titulo)}${g.items.length > 1 ? ` (${g.items.length} medidas)` : ''}</option>`).join('');
+  const reconocidas = carpetas.filter(c => c.modelo).length;
+  let h = `<div class="resumen">
+      <span>carpetas<b>${carpetas.length}</b></span>
+      <span>emparejadas solas<b>${reconocidas}</b></span>
+      <span>fotos en total<b>${carpetas.reduce((n, c) => n + c.fotos.length, 0)}</b></span>
+    </div>`;
+  if (reconocidas < carpetas.length) h += `<p>Las que no reconocí quedaron sin elegir. Buscalas en la lista o dejalas en "no subir".</p>`;
+  h += `<table class="tabla-cambios"><tr><th>Carpeta</th><th>Fotos</th><th>Va a este modelo</th></tr>`;
+  for (const c of carpetas){
+    h += `<tr><td>${esc(c.nombre)}</td><td class="num">${c.fotos.length}</td>` +
+         `<td><select class="fm-sel" data-id="${c.id}">${opciones}</select></td></tr>`;
+  }
+  h += `</table>`;
+  prev.hidden = false; prev.innerHTML = h;
+  carpetas.forEach(c => { const sel = prev.querySelector(`.fm-sel[data-id="${c.id}"]`); if (sel) sel.value = c.modelo ? c.modelo.key : ''; });
+  prev.querySelectorAll('.fm-sel').forEach(sel => sel.addEventListener('change', e => {
+    const c = FM.carpetas.find(x => x.id === e.target.dataset.id);
+    c.modelo = FM.modelos.find(g => g.key === e.target.value) || null;
+    refrescarBotonModelo();
+  }));
+  refrescarBotonModelo();
+}
+
+function refrescarBotonModelo(){
+  const btn = $('#fmConfirmar');
+  const elegidas = (FM.carpetas || []).filter(c => c.modelo);
+  const fotos = elegidas.reduce((n, c) => n + c.fotos.length, 0);
+  const prods = elegidas.reduce((n, c) => n + c.modelo.items.length, 0);
+  btn.disabled = !fotos;
+  btn.textContent = fotos ? `Subir ${fotos} fotos a ${prods} productos` : 'Subir';
+}
+
+async function subirFotosPorModelo(){
+  if (FM.corriendo) return;
+  const elegidas = (FM.carpetas || []).filter(c => c.modelo);
+  if (!elegidas.length) return;
+  const btn = $('#fmConfirmar'), est = $('#fmEstado'), barra = $('#fmBarra');
+  FM.corriendo = true; FM.parar = false; btn.disabled = true;
+  const total = elegidas.reduce((n, c) => n + c.fotos.length, 0);
+  let hechas = 0, fallos = 0;
+  for (const c of elegidas){
+    if (FM.parar) break;
+    let portada = null; const extras = [];
+    for (const f of c.fotos){
+      if (FM.parar) break;
+      try {
+        const { blob } = await achicar(f);
+        const u = await api.subir(blob);
+        if (!portada) portada = u; else extras.push(u);
+      } catch (e){ console.error(e); fallos++; }
+      hechas++;
+      barra.style.width = (total ? hechas / total * 100 : 100) + '%';
+      est.textContent = `Foto ${hechas} de ${total}. ${c.nombre}`;
+    }
+    for (const p of c.modelo.items){
+      const patch = {};
+      if (portada) patch.imagen_url = portada;
+      if (extras.length) patch.imagenes_extra = [...(Array.isArray(p.imagenes_extra) ? p.imagenes_extra : []), ...extras];
+      if (!Object.keys(patch).length) continue;
+      try { const fila = await api.update(p.id, patch); Object.assign(p, fila); }
+      catch (e){ console.error(e); fallos++; }
+    }
+  }
+  FM.corriendo = false; btn.disabled = false;
+  est.textContent = fallos ? `Terminé con ${fallos} errores.` : 'Listo.';
+  if (!S.demo) { try { S.productos = await apiReal.list(true); } catch (e){} }
+  renderTodo();
+  toast(fallos ? `Subí las fotos, ${fallos} fallaron.` : 'Fotos subidas.', fallos ? 'mal' : '');
+}
+
 const A = {
   cat(t){ S.filtro = { ...S.filtro, cat: t.dataset.v, sub: 'Todas', medida: 'Todas', extra: 'Todos' }; renderTodo(); scrollACatalogo(); },
   sub(t){ S.filtro.sub = t.dataset.v; S.filtro.medida = 'Todas'; renderSub(); renderGrid(); },
@@ -1902,6 +2047,17 @@ const A = {
     FN.grupos = null; $('#dlgFotosNum').showModal();
   },
   'fn-confirmar'(){ subirFotosNumeradas(); },
+  'fotos-modelo'(){
+    $('#menu').hidden = true;
+    $('#fmArchivos').value = ''; $('#fmSueltas').value = '';
+    $('#fmPrev').hidden = true; $('#fmEstado').textContent = '';
+    $('#fmBarra').style.width = '0%';
+    $('#fmConfirmar').disabled = true; $('#fmConfirmar').textContent = 'Subir';
+    FM.carpetas = null; FM.modelos = null; $('#dlgFotosMod').showModal();
+  },
+  'fm-sueltas'(){ $('#fmSueltas').click(); },
+  'fm-confirmar'(){ subirFotosPorModelo(); },
+  'fm-cerrar'(){ if (FM.corriendo) FM.parar = true; $('#dlgFotosMod').close(); },
   'fn-cerrar'(){ if (FN.corriendo) FN.parar = true; $('#dlgFotosNum').close(); },
   importar(){ $('#menu').hidden = true; $('#imArchivo').value = ''; $('#imPrev').hidden = true; $('#imConfirmar').disabled = true; $('#imConfirmar').textContent = 'Importar'; CSV.filas = []; $('#dlgImport').showModal(); },
   'im-confirmar'(){ confirmarImport(); },
@@ -2020,7 +2176,10 @@ function bind(){
     }
   });
   $('#fnArchivos').addEventListener('change', e => { if (e.target.files.length) analizarFotos(e.target.files); });
+  $('#fmArchivos').addEventListener('change', e => { if (e.target.files.length) analizarCarpetas(e.target.files); });
+  $('#fmSueltas').addEventListener('change', e => { if (e.target.files.length) analizarCarpetas(e.target.files); });
   $('#dlgFotosNum').addEventListener('close', () => { if (FN.corriendo) FN.parar = true; });
+  $('#dlgFotosMod').addEventListener('close', () => { if (FM.corriendo) FM.parar = true; });
   $('#dlgFotos').addEventListener('close', () => { if (F.corriendo) F.parar = true; });
   window.addEventListener('hashchange', procesarHash);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = $('#menu'); if (m) m.hidden = true; } });
