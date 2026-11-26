@@ -682,7 +682,7 @@ const CATEGORIAS = {
   "Baño": ["Juegos de toallas","Alfombritas","Cortinas de baño"],
   "Mesa": ["Manteles","Repasadores"]
 };
-const MEDIDAS = ["One","Twin","Dos Plazas","Queen","King","Super King"];
+const MEDIDAS = ["1 ½ plaza","Twin","2 ½ plazas","Queen","King","King size"];
 /* La tienda pública pide solo estas columnas: costo y proveedor nunca viajan al cliente. */
 const PUBLIC_COLS = "id,nombre,descripcion,categoria,subcategoria,precio,imagen_url,imagenes_extra,disponible,activo,orden,medida,color,modelo";
 
@@ -812,14 +812,14 @@ function demoData(){
     disponible: true, activo: true, orden: 0, descripcion: 'Algodón peinado, tacto suave.\nLavable en lavarropas.', proveedor: 'Proveedor demo', precio_costo: null, ...extra
   });
   return [
-    d('Sábana Dos Plazas 100% algodón 200 hilos', 'Ropa de cama', 'Sábanas', 'Dos Plazas', 82000, sabana, { imagenes_extra: [acolch] }),
+    d('Sábana 2 ½ plazas 100% algodón 200 hilos', 'Ropa de cama', 'Sábanas', '2 ½ plazas', 82000, sabana, { imagenes_extra: [acolch] }),
     d('Sábana Queen 100% algodón 200 hilos', 'Ropa de cama', 'Sábanas', 'Queen', 93125, sabana),
     d('Sábana King 100% algodón 200 hilos', 'Ropa de cama', 'Sábanas', 'King', 101375, sabana, { disponible: false }),
     d('Acolchado Premium 7oo Twin', 'Ropa de cama', 'Acolchados', 'Twin', 77000, acolch),
     d('Acolchado Premium 7oo queen', 'Ropa de cama', 'Acolchados', 'Queen', 99000, acolch),
     d('Acolchado Premium 7oo king', 'Ropa de cama', 'Acolchados', 'King', 118000, acolch),
     d('Frazada doble Copo 1 1/2', 'Ropa de cama', 'Frazadas', 'One', 52000, frazada),
-    d('Frazada doble Copo 2 1/2', 'Ropa de cama', 'Frazadas', 'Dos Plazas', 73000, frazada),
+    d('Frazada doble Copo 2 1/2', 'Ropa de cama', 'Frazadas', '2 ½ plazas', 73000, frazada),
     d('Juego de Toalla y Toallón WW 500 gr', 'Baño', 'Juegos de toallas', null, 29700, toalla),
     d('Set de Toalla y Toallón Luma 650 grs/m2', 'Baño', 'Juegos de toallas', null, 92000, toalla, { disponible: false }),
     d('Almohada 100% bambú premium', 'Ropa de cama', 'Accesorios', null, 32500, almo),
@@ -850,7 +850,7 @@ function ordenar(l){
     return String(a.nombre).localeCompare(String(b.nombre), 'es', { numeric: true, sensitivity: 'base' });
   });
 }
-const RE_TAM = /\b(super\s*king|king|queen|twin|one|dos\s*plazas?|2\s*1\/2|1\s*1\/2|plazas?|doble)\b/gi;
+const RE_TAM = /(king\s*size|super\s*king|\bking\b|\bqueen\b|\btwin\b|\bone\b|\bdos\s*plazas?\b|[12]\s*(?:½|1\/2)\s*plazas?\b|[12]\s*(?:½|1\/2)(?!\d)|\bplazas?\b|\bdoble\b)/gi;
 const baseNombre = n => String(n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(RE_TAM, ' ').replace(/[^a-z0-9%\/]+/g, ' ').trim();
 const nombreGrupo = n => String(n || '').replace(RE_TAM, ' ').replace(/\s{2,}/g, ' ').trim() || String(n || '');
 
@@ -1543,10 +1543,17 @@ const RUBROS = {
   'repasador':['Mesa','Repasadores'], 'repasadores':['Mesa','Repasadores'],
   'set de repasadores':['Mesa','Repasadores'], 'individual':['Mesa','Manteles']
 };
+/* Cómo nombra cada proveedor el colchón, y cómo lo llama la tienda.
+   90 x 190 = 1 ½ plaza · 100 x 200 = Twin · 140 x 200 = 2 ½ plazas
+   160 x 200 = Queen · 180 x 200 = King · 200 x 200 = King size */
 const MED_PROV = {
-  '1 plaza':'Twin', 'twin':'Twin', '1 1/2 plaza':'One', '1 1/2 plazas':'One', 'one':'One',
-  '2 1/2 plaza':'Dos Plazas', '2 1/2 plazas':'Dos Plazas', '2 plazas':'Dos Plazas', 'dos plazas':'Dos Plazas',
-  'queen':'Queen', 'king':'King', 'super king':'Super King'
+  '1 plaza':'1 ½ plaza', 'twin':'1 ½ plaza',
+  '1 1/2 plaza':'Twin', '1 1/2 plazas':'Twin', 'one':'Twin', 'full':'Twin',
+  '2 plazas':'2 ½ plazas', 'dos plazas':'2 ½ plazas',
+  '2 1/2 plaza':'2 ½ plazas', '2 1/2 plazas':'2 ½ plazas',
+  'queen':'Queen', 'queens':'Queen',
+  'king':'King',
+  'super king':'King size', 'king call':'King size', 'king cal':'King size'
 };
 const sinAc = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 function tituloCase(s){
