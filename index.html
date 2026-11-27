@@ -755,12 +755,25 @@ function initSb(){
   return sb;
 }
 const apiReal = {
+  /* Supabase corta las respuestas en 1000 filas, asi que pido de a tandas
+     hasta que no venga mas nada. El id al final del orden hace que la
+     paginacion sea estable y no se repita ni se saltee ninguna. */
   async list(completo){
-    let q = sb.from('productos').select(completo ? '*' : PUBLIC_COLS);
-    if (!completo) q = q.eq('activo', true);
-    const { data, error } = await q.order('categoria').order('subcategoria').order('orden').order('nombre');
-    if (error) throw error;
-    return data || [];
+    const cols = completo ? '*' : PUBLIC_COLS, PASO = 1000;
+    let desde = 0, todo = [];
+    for (let vuelta = 0; vuelta < 50; vuelta++){
+      let q = sb.from('productos').select(cols);
+      if (!completo) q = q.eq('activo', true);
+      const { data, error } = await q
+        .order('categoria').order('subcategoria').order('orden').order('nombre').order('id')
+        .range(desde, desde + PASO - 1);
+      if (error) throw error;
+      const tanda = data || [];
+      todo = todo.concat(tanda);
+      if (tanda.length < PASO) break;
+      desde += PASO;
+    }
+    return todo;
   },
   async ajustes(){
     const { data, error } = await sb.from('config').select('k,v');
