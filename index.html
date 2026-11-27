@@ -614,9 +614,9 @@ dialog.ancho .csv-prev{max-height:min(52svh,520px);}
 <dialog id="dlgFotosMod" class="modal ancho" aria-labelledby="fmTitulo">
   <h2 id="fmTitulo">Subir fotos por modelo</h2>
   <p>Elegí la carpeta donde tenés las fotos. Si adentro hay una carpeta por modelo, las reparto solas. Cada foto va a todas las medidas de ese modelo: la primera de portada y el resto como fotos extra.</p>
-  <input type="file" id="fmArchivos" accept="image/*" multiple webkitdirectory directory>
+  <input type="file" id="fmArchivos" multiple webkitdirectory directory>
   <p class="fm-alt">¿No te deja elegir carpeta? <button type="button" class="linkbtn" data-act="fm-sueltas">Elegir fotos sueltas</button> y las asignás a un modelo.</p>
-  <input type="file" id="fmSueltas" accept="image/*" multiple hidden>
+  <input type="file" id="fmSueltas" multiple hidden>
   <div class="csv-prev" id="fmPrev" hidden></div>
   <div class="progreso" aria-hidden="true"><i id="fmBarra"></i></div>
   <p id="fmEstado" aria-live="polite" style="margin:0;font-weight:700;"></p>
@@ -1898,7 +1898,9 @@ function analizarCarpetas(files){
   const prev = $('#fmPrev');
   const modelos = FM.modelos = modelosParaFotos();
   const porCarpeta = new Map();
-  [...files].forEach(f => {
+  const soloImagenes = [...files].filter(f =>
+    /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|avif|heic|bmp)$/i.test(f.name));
+  soloImagenes.forEach(f => {
     const rel = f.webkitRelativePath || '';
     const partes = rel.split('/').filter(Boolean);
     const nombre = partes.length > 1 ? partes[partes.length - 2] : (partes[0] || 'Fotos elegidas');
