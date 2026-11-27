@@ -414,6 +414,14 @@ dialog.modal p{margin:0 0 16px;line-height:1.6;}
   color:var(--ink);background:var(--bg);border:1.5px solid var(--edge);border-radius:12px;
 }
 .campo-prov input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.buscador{display:flex;align-items:center;gap:12px;margin:0 0 16px;}
+.buscador input{
+  flex:1;min-width:0;max-width:520px;padding:12px 16px;font:inherit;font-weight:600;
+  color:var(--ink);background:var(--bg);border:1.5px solid var(--edge);border-radius:999px;
+}
+.buscador input::placeholder{color:var(--ink);opacity:.55;font-weight:500;}
+.buscador input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.q-info{font-weight:700;font-size:14px;white-space:nowrap;}
 .fm-alt{margin:-6px 0 14px;font-size:14px;}
 .fm-sel{
   width:100%;max-width:340px;padding:7px 9px;font:inherit;font-size:14px;
@@ -498,6 +506,11 @@ dialog.ancho .csv-prev{max-height:min(52svh,520px);}
 
 <main class="catalogo" id="catalogo">
   <nav class="pills" id="pills" aria-label="Categorías"></nav>
+  <div class="buscador" id="buscador" hidden>
+    <input type="search" id="qBusca" autocomplete="off" spellcheck="false"
+           placeholder="Buscar por nombre, código, color o proveedor" aria-label="Buscar productos">
+    <span class="q-info" id="qInfo" aria-live="polite"></span>
+  </div>
   <div class="subfilters" id="subfilters"></div>
   <div class="grid" id="grid" aria-live="polite"></div>
 </main>
@@ -741,7 +754,7 @@ const S = {
   mostrarPrecios: CFG.MOSTRAR_PRECIOS,
   ajustes: {},
   proveedorLista: 'Jean Cartier',
-  filtro: { cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos', prov:'Todos' }
+  filtro: { cat:'Todo', sub:'Todas', medida:'Todas', extra:'Todos', prov:'Todos', q:'' }
 };
 let sb = null;
 let api = null;
@@ -939,6 +952,14 @@ function filtrados(){
     if (f.extra === 'Ocultos') l = l.filter(p => p.activo === false);
     if (f.extra === 'Sin foto') l = l.filter(p => !urlOk(p.imagen_url));
     if (f.extra === 'Sin stock') l = l.filter(sinStock);
+    if (f.q){
+      const t = sinAc(f.q).split(/\s+/).filter(Boolean);
+      l = l.filter(p => {
+        const texto = sinAc([p.nombre, p.codigo, p.descripcion, p.color, p.modelo,
+                             p.medida, p.proveedor, p.subcategoria].filter(Boolean).join(' '));
+        return t.every(w => texto.includes(w));
+      });
+    }
   }
   return l;
 }
@@ -1112,7 +1133,21 @@ function renderEditbar(){
     : `<button type="button" class="go" data-act="volver-editar">${ico('pencil')} Volver a editar</button>`;
 }
 function renderTodo(){
-  renderNav(); renderSub(); renderGrid(); renderEditbar();
+  renderNav(); renderSub(); renderGrid(); renderEditbar(); renderBuscador();
+}
+function renderBuscador(){
+  const caja = $('#buscador');
+  caja.hidden = !S.editando;
+  if (!S.editando){ S.filtro.q = ''; $('#qBusca').value = ''; }
+  pintarCuenta();
+}
+function pintarCuenta(){
+  const info = $('#qInfo');
+  if (!S.editando || !S.filtro.q){ info.textContent = ''; return; }
+  const n = filtrados().length;
+  info.textContent = n === 0 ? 'nada con eso'
+                   : n === 1 ? '1 producto'
+                   : `${n} productos`;
 }
 
 /* ---------------- ventana de producto ---------------- */
@@ -2191,6 +2226,15 @@ function bind(){
     }
   });
   $('#fnArchivos').addEventListener('change', e => { if (e.target.files.length) analizarFotos(e.target.files); });
+  let tQ;
+  $('#qBusca').addEventListener('input', e => {
+    clearTimeout(tQ);
+    const v = e.target.value;
+    tQ = setTimeout(() => { S.filtro.q = v.trim(); renderGrid(); pintarCuenta(); }, 160);
+  });
+  $('#qBusca').addEventListener('keydown', e => {
+    if (e.key === 'Escape'){ e.target.value = ''; S.filtro.q = ''; renderGrid(); pintarCuenta(); }
+  });
   $('#fmArchivos').addEventListener('change', e => { if (e.target.files.length) analizarCarpetas(e.target.files); });
   $('#fmSueltas').addEventListener('change', e => { if (e.target.files.length) analizarCarpetas(e.target.files); });
   $('#dlgFotosNum').addEventListener('close', () => { if (FN.corriendo) FN.parar = true; });
